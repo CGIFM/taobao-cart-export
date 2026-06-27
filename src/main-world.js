@@ -65,6 +65,30 @@
     if (s.startsWith('//')) s = 'https:' + s;
     return s;
   }
+  // 按内容自动发现"规格"字符串（颜色/尺码/规格/已选…），不依赖字段名
+  function findSpec(o) {
+    if (!o || typeof o !== 'object') return [];
+    const SPEC_RE = /颜色|尺码|规格|版本|套餐|样式|分类|已选|容量|款式|型号|材质|花色/;
+    const seen = new Set();
+    function walk(obj, depth) {
+      if (!obj || typeof obj !== 'object' || depth > 3 || seen.has(obj)) return null;
+      seen.add(obj);
+      try {
+        for (const k of Object.keys(obj)) {
+          const v = obj[k];
+          if (typeof v === 'string' && v.length >= 2 && v.length < 300 && (SPEC_RE.test(v) || (/：/.test(v) && v.length < 80 && !/https?:|\.htm|淘宝|天猫|京东|aliexpress/i.test(v)))) return v;
+        }
+        for (const k of Object.keys(obj)) {
+          const v = obj[k];
+          if (v && typeof v === 'object') { const r = walk(v, depth + 1); if (r) return r; }
+        }
+      } catch (e) {}
+      return null;
+    }
+    const s = walk(o, 0);
+    if (!s) return [];
+    return s.replace(/&gt;|&amp;gt;|>/g, ' ').split(/[;；\n]/).map((x) => x.trim()).filter(Boolean);
+  }
   function normItem(o, fallbackUrl) {
     if (!o || typeof o !== 'object') return null;
     const title = pick(o, ['title', 'itemTitle', 'subject', 'titleSimple', 'name', 'itemName']);
@@ -73,10 +97,12 @@
     const detailsUrl = url || fallbackUrl || (itemId ? 'https://item.taobao.com/item.htm?id=' + itemId : '');
     const qty = pick(o, ['quantity', 'qty', 'buyAmount', 'count', 'num', 'amount', 'amountValue']);
     const img = pick(o, ['pic', 'picUrl', 'imgUrl', 'image', 'mainPic', 'mainImage', 'img', 'imageUrl']);
-    const sku = pick(o, ['skuText', 'skuValues', 'skuDesc', 'attributes', 'specAttrs', 'skuInfo', 'props']);
-    let specs = [];
-    if (typeof sku === 'string') specs = sku.replace(/&gt;|>/g, ' ').split(/[;,]/).map((s) => s.trim()).filter(Boolean);
-    else if (Array.isArray(sku)) specs = sku.map((x) => (typeof x === 'string' ? x : Array.isArray(x) ? x.flat().join(' ') : (x && (x.text || x.name || x.value)) || '')).filter(Boolean);
+    let specs = findSpec(o);
+    if (!specs.length) {
+      const sku = pick(o, ['skuText', 'skuValues', 'skuDesc', 'attributes', 'specAttrs', 'skuInfo', 'props', 'cartSkuText', 'skuProperties', 'properties', 'salePropText', 'subTitle']);
+      if (typeof sku === 'string') specs = sku.replace(/&gt;|>/g, ' ').split(/[;；,]/).map((s) => s.trim()).filter(Boolean);
+      else if (Array.isArray(sku)) specs = sku.map((x) => (typeof x === 'string' ? x : Array.isArray(x) ? x.flat().join(' ') : (x && (x.text || x.name || x.value)) || '')).filter(Boolean);
+    }
     const title2 = typeof title === 'string' ? title : (title && (title.text || title.name || title.subject)) || '';
     if (!title2 && !itemId) return null;
     return {
