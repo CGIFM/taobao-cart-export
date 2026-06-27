@@ -1,48 +1,37 @@
 /*!
  * main-world.js — 在页面【主世界】运行（manifest world:"MAIN", document_start）
- * 仿 AiPrice 的做法：逐个购物车行读 React Fiber，取每个商品自带的数据对象
- * （标题/图/数量/勾选状态天然对齐），postMessage 给内容脚本。
- * 同时保留 fetch/XHR 拦截作为探针/兜底（把命中的购物车 API JSON 转发出去）。
- * 全原创代码（思路同类，代码自写）。
+ * 仿 AiPrice：逐个购物车行读 React Fiber，取每个商品的数据对象（图+标题对齐）。
+ * 勾选状态：从商品行的复选框读（往上找），找不到则用商品对象字段，再不行按未勾选处理。
+ * 诊断日志：打印首个商品的原始字段名 + 复选框探测结果，便于按真实结构精准化。
+ * 全原创代码。
  */
 (() => {
   const TAG = '__TCE_CART__';
   const MAX = 200000;
 
-  // ---------- 工具：React Fiber 读取 ----------
   function fiberKey(el) {
     if (!el) return null;
     return Object.keys(el).find((k) => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
   }
-
-  // 在 props 树里深度找"像商品的对象"（同时含 标题 + id + 图）
   function deepFindItem(obj, depth, seen) {
     if (!obj || typeof obj !== 'object' || depth > 4) return null;
     if (seen.has(obj)) return null;
     seen.add(obj);
     let keys = '';
     try { keys = Array.isArray(obj) ? '' : Object.keys(obj).join('|'); } catch (e) { return null; }
-    if (keys && /title|itemTitle|subject/i.test(keys) && /itemId|itemid|skuId|offerId|id\b/i.test(keys) && /pic|img|image/i.test(keys)) {
-      return obj;
-    }
+    if (keys && /title|itemTitle|subject/i.test(keys) && /itemId|itemid|skuId|offerId|id\b/i.test(keys) && /pic|img|image/i.test(keys)) return obj;
     try {
       for (const k of Object.keys(obj)) {
         const v = obj[k];
-        if (v && typeof v === 'object') {
-          const r = deepFindItem(v, depth + 1, seen);
-          if (r) return r;
-        }
+        if (v && typeof v === 'object') { const r = deepFindItem(v, depth + 1, seen); if (r) return r; }
       }
     } catch (e) {}
     return null;
   }
-
-  // 从一个 DOM 节点沿 fiber.return 往上找商品对象
   function findItemInFiber(el) {
     const k = fiberKey(el);
     if (!k) return null;
-    let fiber = el[k];
-    let depth = 0;
+    let fiber = el[k], depth = 0;
     while (fiber && depth < 40) {
       const mp = fiber.memoizedProps;
       if (mp && typeof mp === 'object') {
@@ -63,9 +52,7 @@
         let v = o;
         for (const p of parts) { if (v == null) break; v = v[p]; }
         if (v != null && v !== '') return v;
-      } else if (o[k] != null && o[k] !== '') {
-        return o[k];
-      }
+      } else if (o[k] != null && o[k] !== '') return o[k];
     }
     return undefined;
   }
@@ -98,26 +85,41 @@
       detailsUrl: String(detailsUrl || ''),
       quantity: Number(qty) >= 1 ? Number(qty) : 1,
       images: [asImgUrl(img)].filter(Boolean),
-      _selected: false, // 由 readSelected 填
+      _selected: false,
+      _selSource: '',
       _raw_id: itemId ? String(itemId) : (detailsUrl || title2),
     };
   }
 
-  // 读勾选状态：DOM 复选框 / aria / 商品对象字段；默认 false（只导勾选的）
+  // 从 rowEl 往上找最近的"商品勾选框"（宁近勿远，避免抓到"全选"）
+  function findCheckbox(rowEl) {
+    let el = rowEl, depth = 0;
+    while (el && depth < 6) {
+      const inputs = el.querySelectorAll(':scope input[type=checkbox]');
+      if (inputs.length) return { el: inputs[0], level: depth, kind: 'input' };
+      const aria = el.querySelector(':scope [aria-checked]');
+      if (aria) return { el: aria, level: depth, kind: 'aria' };
+      el = el.parentElement;
+      depth++;
+    }
+    return null;
+  }
   function readSelected(rowEl, item) {
-    if (rowEl) {
-      const cb = rowEl.querySelector('input[type=checkbox]');
-      if (cb) return !!cb.checked;
-      const aria = rowEl.querySelector('[aria-checked]');
-      if (aria) return aria.getAttribute('aria-checked') === 'true';
+    const cb = findCheckbox(rowEl);
+    if (cb) {
+      let on = false;
+      if (cb.kind === 'input') on = !!cb.el.checked;
+      else if (cb.kind === 'aria') on = cb.el.getAttribute('aria-checked') === 'true';
+      return { on, source: cb.kind + '@L' + cb.level };
     }
-    for (const k of ['selected', 'checked', 'isChecked', 'is_checked', 'checkedStatus', 'inCart']) {
-      if (item && item[k] != null) return !!item[k];
+    // 回退：商品对象里的"勾选"字段（保守，只认明确表示勾选的；去掉 inCart 这种恒真）
+    const FIELDS = ['isSelected', 'isChecked', 'is_checked', 'cartChecked', 'checkedStatus', 'inCheckedAmounts'];
+    for (const k of FIELDS) {
+      if (item && typeof item[k] === 'boolean') return { on: item[k], source: 'field:' + k };
     }
-    return false;
+    return { on: false, source: 'default:false' };
   }
 
-  // ---------- 扫描购物车行 ----------
   function itemLinkMatches() {
     return /item\.htm|taobao\.com\/i\.|detail\.tmall\.com|^https?:\/\/a\.m\.taobao/i;
   }
@@ -125,6 +127,7 @@
     const links = [...document.querySelectorAll('a[href]')].filter((a) => itemLinkMatches().test(a.href));
     const items = [];
     const seen = new Set();
+    let firstRaw = null, firstRowEl = null;
     for (const link of links) {
       let el = link, found = null, rowEl = null;
       for (let up = 0; up < 14 && el; up++, el = el.parentElement) {
@@ -132,77 +135,75 @@
         if (it) { found = it; rowEl = el; break; }
       }
       if (!found) continue;
+      if (!firstRaw) { firstRaw = found; firstRowEl = rowEl; }
       const norm = normItem(found, link.href);
       if (!norm) continue;
       if (seen.has(norm._raw_id)) continue;
       seen.add(norm._raw_id);
-      norm._selected = readSelected(rowEl, found);
+      const sel = readSelected(rowEl, found);
+      norm._selected = sel.on;
+      norm._selSource = sel.source;
       items.push(norm);
     }
-    return items;
+    return { items, firstRaw, firstRowEl };
   }
 
-  let lastSig = '';
+  let lastSig = '', diagLogged = false;
   function scanAndRelay() {
-    let items = [];
-    try { items = scanCartItems(); } catch (e) { console.warn('[购物车导出·主世界] 扫描异常', e); }
+    let result;
+    try { result = scanCartItems(); } catch (e) { console.warn('[购物车导出·主世界] 扫描异常', e); return; }
+    const items = result.items;
     const sig = items.map((i) => i._raw_id + ':' + (i._selected ? 1 : 0)).join('|');
-    if (sig === lastSig) return; // 没变化不重发
+    if (sig === lastSig && items.length) return;
     lastSig = sig;
-    console.log('%c[购物车导出·主世界] 扫描到 ' + items.length + ' 个商品（勾选 ' + items.filter((i) => i._selected).length + '）', 'color:#1a73e8;font-weight:bold');
+
+    const selCount = items.filter((i) => i._selected).length;
+    console.log('%c[购物车导出·主世界] 扫描 ' + items.length + ' 个商品（判定勾选 ' + selCount + '）', 'color:#1a73e8;font-weight:bold');
     if (items[0]) console.log('  样例:', items[0]);
+
+    // 诊断（只打一次，帮作者定位勾选字段）
+    if (!diagLogged && result.firstRaw) {
+      diagLogged = true;
+      let rawKeys = '';
+      try { rawKeys = Object.keys(result.firstRaw).join(', '); } catch (e) {}
+      console.groupCollapsed('%c[购物车导出·诊断] 首个商品原始字段（点开看 → 发作者）', 'color:#d2691e;font-weight:bold');
+      console.log('原始字段名:', rawKeys);
+      console.log('原始对象(可展开查勾选字段):', result.firstRaw);
+      const cb = result.firstRowEl ? findCheckbox(result.firstRowEl) : null;
+      console.log('首行复选框探测:', cb ? (cb.kind + ' @L' + cb.level) : '没找到 input/aria 复选框');
+      console.log('判定来源:', items[0] ? items[0]._selSource : '?');
+      console.log('【请把这块日志截图/复制发作者，用于精准化勾选读取】');
+      console.groupEnd();
+    }
+
     try { window.postMessage({ tag: TAG, kind: 'items', items }, '*'); } catch (e) {}
   }
 
-  // 周期 + DOM 变化触发扫描（SPA）
   let timer = null;
-  function scheduleScan() {
-    if (timer) return;
-    timer = setTimeout(() => { timer = null; scanAndRelay(); }, 800);
-  }
-  try {
-    const mo = new MutationObserver(scheduleScan);
-    mo.observe(document.documentElement, { childList: true, subtree: true });
-  } catch (e) {}
+  function scheduleScan() { if (timer) return; timer = setTimeout(() => { timer = null; scanAndRelay(); }, 800); }
+  try { new MutationObserver(scheduleScan).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
   setInterval(scanAndRelay, 2500);
-  // 首次
   setTimeout(scanAndRelay, 600);
 
-  // ---------- 兜底/探针：拦截 fetch/XHR，转发购物车 API JSON ----------
+  // 兜底：fetch/XHR 拦截
   const CART_URL = /cart\.taobao\.com|\/cart\b|mtop\.[\w.]*cart|trade\.[\w.]*cart|h5api\.m\.taobao\.com/i;
-  function relay(kind, url, body) {
-    try { window.postMessage({ tag: TAG, kind, url: String(url || ''), body: String(body || '').slice(0, MAX) }, '*'); } catch (e) {}
-  }
+  function relay(kind, url, body) { try { window.postMessage({ tag: TAG, kind, url: String(url || ''), body: String(body || '').slice(0, MAX) }, '*'); } catch (e) {} }
   const _fetch = window.fetch;
   if (typeof _fetch === 'function' && !_fetch.__tce) {
     const wrapped = function (input) {
       const url = (typeof input === 'string') ? input : (input && input.url) || '';
       const p = _fetch.apply(this, arguments);
-      try {
-        if (url && CART_URL.test(url)) {
-          p.then((resp) => { try { resp.clone().text().then((t) => { console.log('%c[购物车导出·命中] fetch', 'color:#9c27b0', url, 'len=' + t.length); relay('fetch', url, t); }).catch(() => {}); } catch (e) {} }).catch(() => {});
-        }
-      } catch (e) {}
+      try { if (url && CART_URL.test(url)) p.then((resp) => { try { resp.clone().text().then((t) => { console.log('%c[购物车导出·命中] fetch', 'color:#9c27b0', url, 'len=' + t.length); relay('fetch', url, t); }).catch(() => {}); } catch (e) {} }).catch(() => {}); } catch (e) {}
       return p;
     };
-    wrapped.__tce = true;
-    window.fetch = wrapped;
+    wrapped.__tce = true; window.fetch = wrapped;
   }
-  const _open = XMLHttpRequest.prototype.open;
-  const _send = XMLHttpRequest.prototype.send;
+  const _open = XMLHttpRequest.prototype.open, _send = XMLHttpRequest.prototype.send;
   if (typeof _open === 'function' && !_open.__tce) {
-    XMLHttpRequest.prototype.open = function (method, url) {
-      this.__tce_url = url; this.__tce_cart = !!url && CART_URL.test(String(url));
-      return _open.apply(this, arguments);
-    };
-    XMLHttpRequest.prototype.send = function () {
-      if (this.__tce_cart) {
-        this.addEventListener('load', () => { try { const t = this.responseText || ''; console.log('%c[购物车导出·命中] XHR', 'color:#9c27b0', this.__tce_url, 'len=' + t.length); relay('xhr', this.__tce_url, t); } catch (e) {} });
-      }
-      return _send.apply(this, arguments);
-    };
+    XMLHttpRequest.prototype.open = function (method, url) { this.__tce_url = url; this.__tce_cart = !!url && CART_URL.test(String(url)); return _open.apply(this, arguments); };
+    XMLHttpRequest.prototype.send = function () { if (this.__tce_cart) this.addEventListener('load', () => { try { const t = this.responseText || ''; console.log('%c[购物车导出·命中] XHR', 'color:#9c27b0', this.__tce_url, 'len=' + t.length); relay('xhr', this.__tce_url, t); } catch (e) {} }); return _send.apply(this, arguments); };
     _open.__tce = true;
   }
 
-  console.log('%c[购物车导出·主世界] 已装：Fiber 逐行扫描 + fetch/XHR 兜底', 'color:#34a853;font-weight:bold');
+  console.log('%c[购物车导出·主世界] 已装：Fiber 逐行扫描 + 复选框读取 + fetch/XHR 兜底', 'color:#34a853;font-weight:bold');
 })();
