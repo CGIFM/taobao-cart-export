@@ -65,10 +65,47 @@
     if (s.startsWith('//')) s = 'https:' + s;
     return s;
   }
-  // 按内容自动发现"规格"字符串（颜色/尺码/规格/已选…），不依赖字段名
+  // 把各种规格值结构（字符串/数组/对象）统一成字符串数组
+  function parseSpecValue(v) {
+    if (v == null || v === '') return [];
+    if (typeof v === 'string') {
+      const s = v.replace(/&gt;|&amp;gt;|>/g, ' ');
+      return s.split(/[;；\n]/).map((x) => x.trim()).filter(Boolean);
+    }
+    if (Array.isArray(v)) {
+      const parts = v.map((x) => {
+        if (typeof x === 'string') return x;
+        if (x && typeof x === 'object') {
+          const n = x.name || x.propName || x.key || x.label || x.k || '';
+          const val = x.value || x.propValue || x.v || x.text || x.val || '';
+          if (n && val && n !== val) return n + '：' + val;
+          return val || n || '';
+        }
+        return '';
+      }).filter(Boolean);
+      if (parts.length) return parts.join(' ').split(/[;；\n]/).map((s) => s.trim()).filter(Boolean);
+    }
+    if (typeof v === 'object') {
+      const parts = [];
+      for (const k of Object.keys(v)) {
+        const val = v[k];
+        if (typeof val === 'string' || typeof val === 'number') parts.push(k + '：' + val);
+      }
+      if (parts.length) return parts;
+    }
+    return [];
+  }
+  // 规格提取：先按字段名（广撒网），再按内容（颜色/尺码…）兜底
   function findSpec(o) {
     if (!o || typeof o !== 'object') return [];
-    const SPEC_RE = /颜色|尺码|规格|版本|套餐|样式|分类|已选|容量|款式|型号|材质|花色/;
+    const SPEC_FIELDS = ['skuText', 'cartSkuText', 'skuDesc', 'skuInfo', 'skuInfoText', 'properties', 'property', 'propText', 'saleProp', 'salePropText', 'stdProp', 'skuProperties', 'subTitle', 'spec', 'specs', 'attrText', 'cartAttr', 'skuList', 'skuValues', 'saleInfo', 'selectedSkuInfo', 'skuInfoList', 'cartSkuInfo', 'propStr', 'skuProp', 'stdPropText'];
+    for (const k of SPEC_FIELDS) {
+      if (o[k] != null && o[k] !== '') {
+        const parsed = parseSpecValue(o[k]);
+        if (parsed.length) return parsed;
+      }
+    }
+    const SPEC_RE = /颜色|尺码|规格|版本|套餐|样式|分类|已选|容量|款式|型号|材质|花色|色号|净含量|口味/;
     const seen = new Set();
     function walk(obj, depth) {
       if (!obj || typeof obj !== 'object' || depth > 3 || seen.has(obj)) return null;
@@ -86,8 +123,7 @@
       return null;
     }
     const s = walk(o, 0);
-    if (!s) return [];
-    return s.replace(/&gt;|&amp;gt;|>/g, ' ').split(/[;；\n]/).map((x) => x.trim()).filter(Boolean);
+    return s ? s.replace(/&gt;|&amp;gt;|>/g, ' ').split(/[;；\n]/).map((x) => x.trim()).filter(Boolean) : [];
   }
   function normItem(o, fallbackUrl) {
     if (!o || typeof o !== 'object') return null;
@@ -187,18 +223,28 @@
     console.log('%c[购物车导出·主世界] 扫描 ' + items.length + ' 个商品（判定勾选 ' + selCount + '）', 'color:#1a73e8;font-weight:bold');
     if (items[0]) console.log('  样例:', items[0]);
 
-    // 诊断（只打一次，帮作者定位勾选字段）
+    // 诊断（只打一次，自动展开，含字段值预览，一次发作者看清）
     if (!diagLogged && result.firstRaw) {
       diagLogged = true;
-      let rawKeys = '';
-      try { rawKeys = Object.keys(result.firstRaw).join(', '); } catch (e) {}
-      console.groupCollapsed('%c[购物车导出·诊断] 首个商品原始字段（点开看 → 发作者）', 'color:#d2691e;font-weight:bold');
-      console.log('原始字段名:', rawKeys);
-      console.log('原始对象(可展开查勾选字段):', result.firstRaw);
+      const preview = {};
+      try {
+        for (const k of Object.keys(result.firstRaw)) {
+          const v = result.firstRaw[k];
+          let pv;
+          if (typeof v === 'string') pv = '"' + (v.length > 70 ? v.slice(0, 70) + '…' : v) + '"';
+          else if (Array.isArray(v)) pv = 'array[' + v.length + ']' + (v.length ? ' ' + JSON.stringify(v[0]).slice(0, 60) : '');
+          else if (v && typeof v === 'object') pv = 'obj{' + Object.keys(v).slice(0, 10).join(',') + '}';
+          else pv = String(v);
+          preview[k] = pv;
+        }
+      } catch (e) {}
+      console.group('%c[购物车导出·诊断] 首个商品字段（请整块发作者）', 'color:#d2691e;font-weight:bold');
+      console.log('字段名+值预览:', preview);
+      console.log('原始对象(可展开):', result.firstRaw);
       const cb = result.firstRowEl ? findCheckbox(result.firstRowEl) : null;
-      console.log('首行复选框探测:', cb ? (cb.kind + ' @L' + cb.level) : '没找到 input/aria 复选框');
-      console.log('判定来源:', items[0] ? items[0]._selSource : '?');
-      console.log('【请把这块日志截图/复制发作者，用于精准化勾选读取】');
+      console.log('复选框探测:', cb ? (cb.kind + ' @L' + cb.level) : '没找到 input/aria');
+      console.log('勾选来源:', items[0] ? items[0]._selSource : '?');
+      console.log('规格结果:', items[0] ? JSON.stringify(items[0].specs) : '?');
       console.groupEnd();
     }
 
