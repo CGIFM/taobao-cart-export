@@ -1,5 +1,7 @@
 # Chrome / Edge 商店上架文案
 
+> 开发者 / 作者：**FengMingyang**
+
 ## 名称（≤45 字符）
 - 中文：淘宝购物车导出助手
 - 英文：Taobao Cart Export
