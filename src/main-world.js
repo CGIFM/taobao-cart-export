@@ -133,12 +133,17 @@
     const detailsUrl = url || fallbackUrl || (itemId ? 'https://item.taobao.com/item.htm?id=' + itemId : '');
     const qty = pick(o, ['quantity', 'qty', 'buyAmount', 'count', 'num', 'amount', 'amountValue']);
     const img = pick(o, ['pic', 'picUrl', 'imgUrl', 'image', 'mainPic', 'mainImage', 'img', 'imageUrl']);
-    let specs = findSpec(o);
-    if (!specs.length) {
-      const sku = pick(o, ['skuText', 'skuValues', 'skuDesc', 'attributes', 'specAttrs', 'skuInfo', 'props', 'cartSkuText', 'skuProperties', 'properties', 'salePropText', 'subTitle']);
-      if (typeof sku === 'string') specs = sku.replace(/&gt;|>/g, ' ').split(/[;；,]/).map((s) => s.trim()).filter(Boolean);
-      else if (Array.isArray(sku)) specs = sku.map((x) => (typeof x === 'string' ? x : Array.isArray(x) ? x.flat().join(' ') : (x && (x.text || x.name || x.value)) || '')).filter(Boolean);
+    let specs = [];
+    // 淘宝购物车：sku.skuMap（{颜色分类:胶枪}）→ "颜色分类：胶枪"；否则 sku.title
+    if (o.sku && typeof o.sku === 'object') {
+      const sm = o.sku.skuMap;
+      if (sm && typeof sm === 'object' && !Array.isArray(sm)) {
+        const parts = Object.keys(sm).map((k) => (sm[k] != null && sm[k] !== '') ? (k + '：' + sm[k]) : '').filter(Boolean);
+        if (parts.length) specs = parts;
+      }
+      if (!specs.length && o.sku.title) specs = [String(o.sku.title)];
     }
+    if (!specs.length) specs = findSpec(o);
     const title2 = typeof title === 'string' ? title : (title && (title.text || title.name || title.subject)) || '';
     if (!title2 && !itemId) return null;
     return {
@@ -167,17 +172,22 @@
     return null;
   }
   function readSelected(rowEl, item) {
+    // 优先用数据里的 isChecked（淘宝权威字段，值 "true"/"false" 字符串或布尔）
+    if (item && item.isChecked != null) {
+      const v = item.isChecked;
+      return { on: v === true || v === 'true' || v === 1 || v === '1', source: 'field:isChecked' };
+    }
+    if (item && item.is_checked != null) {
+      const v = item.is_checked;
+      return { on: v === true || v === 'true' || v === 1, source: 'field:is_checked' };
+    }
+    // DOM 复选框兜底
     const cb = findCheckbox(rowEl);
     if (cb) {
       let on = false;
       if (cb.kind === 'input') on = !!cb.el.checked;
       else if (cb.kind === 'aria') on = cb.el.getAttribute('aria-checked') === 'true';
       return { on, source: cb.kind + '@L' + cb.level };
-    }
-    // 回退：商品对象里的"勾选"字段（保守，只认明确表示勾选的；去掉 inCart 这种恒真）
-    const FIELDS = ['isSelected', 'isChecked', 'is_checked', 'cartChecked', 'checkedStatus', 'inCheckedAmounts'];
-    for (const k of FIELDS) {
-      if (item && typeof item[k] === 'boolean') return { on: item[k], source: 'field:' + k };
     }
     return { on: false, source: 'default:false' };
   }
