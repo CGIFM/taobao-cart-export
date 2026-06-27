@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, "Microsoft YaHei", system-ui, sans-serif; width: 290px; margin: 0; padding: 16px; color: #222; }
+  h1 { font-size: 15px; margin: 0 0 10px; display:flex; align-items:center; gap:6px; }
+  .tag { display:inline-block; background:#fff4e5; color:#d2691e; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600; }
+  p { font-size: 12px; color: #555; margin: 8px 0; line-height: 1.55; }
+  kbd { background:#f0f0f0; border-radius:3px; padding:1px 4px; font-size:11px; }
+  button { width:100%; padding:11px; border:none; border-radius:9px; background:linear-gradient(135deg,#ff7a00,#ff4400); color:#fff; font-size:13px; font-weight:700; cursor:pointer; margin-top:10px; }
+  button:hover { filter: brightness(1.05); }
+  .hint { background:#fffaf3; border:1px solid #ffe2c2; border-radius:8px; padding:8px 10px; margin-top:10px; font-size:11.5px; color:#935; }
+</style>
+</head>
+<body>
+  <h1>🛒 淘宝购物车导出助手 <span class="tag">v1.0.0 探针版</span></h1>
+  <p><b>用法：</b>打开淘宝购物车 → 勾选要导出的商品 �� 点页面右下角橙色「导出购物车」按钮 → 选"嵌入/浮动" → 下载 .xlsx。</p>
+  <button id="open">打开淘宝购物车</button>
+  <div class="hint">
+    <b>探针版说明：</b>第一次用请按 <kbd>F12</kbd> → Console，把 <b>[购物车导出]</b> 开头的日志复制发给作者，用于精准适配淘宝数据结构（适配后会出正式版）。
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
