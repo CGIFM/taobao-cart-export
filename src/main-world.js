@@ -128,7 +128,9 @@
   function normItem(o, fallbackUrl) {
     if (!o || typeof o !== 'object') return null;
     const title = pick(o, ['title', 'itemTitle', 'subject', 'titleSimple', 'name', 'itemName']);
-    const itemId = pick(o, ['itemId', 'itemid', 'item_id', 'offerId', 'id', 'skuId']);
+    const itemId = pick(o, ['itemId', 'itemid', 'item_id', 'offerId', 'id']);
+    const cartId = pick(o, ['cartId', 'cartid', 'cart_id']);
+    const skuId = (o.sku && o.sku.skuId) || pick(o, ['skuId', 'skuid', 'sku_id']);
     const url = pick(o, ['detailUrl', 'url', 'clickUrl', 'itemUrl', 'detail_url']);
     const detailsUrl = url || fallbackUrl || (itemId ? 'https://item.taobao.com/item.htm?id=' + itemId : '');
     const qty = pick(o, ['quantity', 'qty', 'buyAmount', 'count', 'num', 'amount', 'amountValue']);
@@ -154,7 +156,7 @@
       images: [asImgUrl(img)].filter(Boolean),
       _selected: false,
       _selSource: '',
-      _raw_id: itemId ? String(itemId) : (detailsUrl || title2),
+      _raw_id: cartId ? String(cartId) : (skuId ? ((itemId || '') + '_' + skuId) : (itemId ? String(itemId) : (detailsUrl || title2))),
     };
   }
 
