@@ -223,29 +223,26 @@
     console.log('%c[购物车导出·主世界] 扫描 ' + items.length + ' 个商品（判定勾选 ' + selCount + '）', 'color:#1a73e8;font-weight:bold');
     if (items[0]) console.log('  样例:', items[0]);
 
-    // 诊断（只打一次，自动展开，含字段值预览，一次发作者看清）
+    // 诊断（只打一次；用纯文本字符串输出，避免控制台显示成 Object 复制不出来）
     if (!diagLogged && result.firstRaw) {
       diagLogged = true;
       const preview = {};
+      let rawJson = '';
       try {
         for (const k of Object.keys(result.firstRaw)) {
           const v = result.firstRaw[k];
           let pv;
           if (typeof v === 'string') pv = '"' + (v.length > 70 ? v.slice(0, 70) + '…' : v) + '"';
-          else if (Array.isArray(v)) pv = 'array[' + v.length + ']' + (v.length ? ' ' + JSON.stringify(v[0]).slice(0, 60) : '');
+          else if (Array.isArray(v)) pv = 'arr[' + v.length + ']' + (v.length ? ' ' + JSON.stringify(v[0]).slice(0, 60) : '');
           else if (v && typeof v === 'object') pv = 'obj{' + Object.keys(v).slice(0, 10).join(',') + '}';
           else pv = String(v);
           preview[k] = pv;
         }
-      } catch (e) {}
-      console.group('%c[购物车导出·诊断] 首个商品字段（请整块发作者）', 'color:#d2691e;font-weight:bold');
-      console.log('字段名+值预览:', preview);
-      console.log('原始对象(可展开):', result.firstRaw);
-      const cb = result.firstRowEl ? findCheckbox(result.firstRowEl) : null;
-      console.log('复选框探测:', cb ? (cb.kind + ' @L' + cb.level) : '没找到 input/aria');
-      console.log('勾选来源:', items[0] ? items[0]._selSource : '?');
-      console.log('规格结果:', items[0] ? JSON.stringify(items[0].specs) : '?');
-      console.groupEnd();
+        rawJson = JSON.stringify(result.firstRaw).replace(/https?:\/\/[^"]{50,}/g, '<url>').slice(0, 2500);
+      } catch (e) { rawJson = '序列化失败: ' + e; }
+      console.log('%c[诊断·首个商品] 选中下面 2 行复制发作者👇', 'color:#d2691e;font-weight:bold;font-size:13px');
+      console.log('FIELD_PREVIEW=' + JSON.stringify(preview));
+      console.log('RAW_JSON=' + rawJson);
     }
 
     try { window.postMessage({ tag: TAG, kind: 'items', items }, '*'); } catch (e) {}
