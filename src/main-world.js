@@ -1,13 +1,11 @@
 /*!
  * main-world.js — 在页面【主世界】运行（manifest world:"MAIN", document_start）
- * 仿 AiPrice：逐个购物车行读 React Fiber，取每个商品的数据对象（图+标题对齐）。
- * 勾选状态：从商品行的复选框读（往上找），找不到则用商品对象字段，再不行按未勾选处理。
- * 诊断日志：打印首个商品的原始字段名 + 复选框探测结果，便于按真实结构精准化。
+ * 逐个购物车行读 React Fiber，取每个商品的数据对象
+ * （标题 / 规格 / 图 / 数量 / 勾选 天然对齐），postMessage 给内容脚本。
  * 全原创代码。
  */
 (() => {
   const TAG = '__TCE_CART__';
-  const MAX = 200000;
 
   function fiberKey(el) {
     if (!el) return null;
@@ -65,7 +63,6 @@
     if (s.startsWith('//')) s = 'https:' + s;
     return s;
   }
-  // 把各种规格值结构（字符串/数组/对象）统一成字符串数组
   function parseSpecValue(v) {
     if (v == null || v === '') return [];
     if (typeof v === 'string') {
@@ -95,7 +92,6 @@
     }
     return [];
   }
-  // 规格提取：先按字段名（广撒网），再按内容（颜色/尺码…）兜底
   function findSpec(o) {
     if (!o || typeof o !== 'object') return [];
     const SPEC_FIELDS = ['skuText', 'cartSkuText', 'skuDesc', 'skuInfo', 'skuInfoText', 'properties', 'property', 'propText', 'saleProp', 'salePropText', 'stdProp', 'skuProperties', 'subTitle', 'spec', 'specs', 'attrText', 'cartAttr', 'skuList', 'skuValues', 'saleInfo', 'selectedSkuInfo', 'skuInfoList', 'cartSkuInfo', 'propStr', 'skuProp', 'stdPropText'];
@@ -131,12 +127,11 @@
     const itemId = pick(o, ['itemId', 'itemid', 'item_id', 'offerId', 'id']);
     const cartId = pick(o, ['cartId', 'cartid', 'cart_id']);
     const skuId = (o.sku && o.sku.skuId) || pick(o, ['skuId', 'skuid', 'sku_id']);
-    const url = pick(o, ['detailUrl', 'url', 'clickUrl', 'itemUrl', 'detail_url']);
+    const url = pick(o, ['detailUrl', 'url', 'clickUrl', 'itemUrl', 'detail_url', 'outerUrl']);
     const detailsUrl = url || fallbackUrl || (itemId ? 'https://item.taobao.com/item.htm?id=' + itemId : '');
     const qty = pick(o, ['quantity', 'qty', 'buyAmount', 'count', 'num', 'amount', 'amountValue']);
     const img = pick(o, ['pic', 'picUrl', 'imgUrl', 'image', 'mainPic', 'mainImage', 'img', 'imageUrl']);
     let specs = [];
-    // 淘宝购物车：sku.skuMap（{颜色分类:胶枪}）→ "颜色分类：胶枪"；否则 sku.title
     if (o.sku && typeof o.sku === 'object') {
       const sm = o.sku.skuMap;
       if (sm && typeof sm === 'object' && !Array.isArray(sm)) {
@@ -155,12 +150,10 @@
       quantity: Number(qty) >= 1 ? Number(qty) : 1,
       images: [asImgUrl(img)].filter(Boolean),
       _selected: false,
-      _selSource: '',
       _raw_id: cartId ? String(cartId) : (skuId ? ((itemId || '') + '_' + skuId) : (itemId ? String(itemId) : (detailsUrl || title2))),
     };
   }
 
-  // 从 rowEl 往上找最近的"商品勾选框"（宁近勿远，避免抓到"全选"）
   function findCheckbox(rowEl) {
     let el = rowEl, depth = 0;
     while (el && depth < 6) {
@@ -174,24 +167,20 @@
     return null;
   }
   function readSelected(rowEl, item) {
-    // 优先用数据里的 isChecked（淘宝权威字段，值 "true"/"false" 字符串或布尔）
     if (item && item.isChecked != null) {
       const v = item.isChecked;
-      return { on: v === true || v === 'true' || v === 1 || v === '1', source: 'field:isChecked' };
+      return v === true || v === 'true' || v === 1 || v === '1';
     }
     if (item && item.is_checked != null) {
       const v = item.is_checked;
-      return { on: v === true || v === 'true' || v === 1, source: 'field:is_checked' };
+      return v === true || v === 'true' || v === 1;
     }
-    // DOM 复选框兜底
     const cb = findCheckbox(rowEl);
     if (cb) {
-      let on = false;
-      if (cb.kind === 'input') on = !!cb.el.checked;
-      else if (cb.kind === 'aria') on = cb.el.getAttribute('aria-checked') === 'true';
-      return { on, source: cb.kind + '@L' + cb.level };
+      if (cb.kind === 'input') return !!cb.el.checked;
+      if (cb.kind === 'aria') return cb.el.getAttribute('aria-checked') === 'true';
     }
-    return { on: false, source: 'default:false' };
+    return false;
   }
 
   function itemLinkMatches() {
@@ -201,7 +190,6 @@
     const links = [...document.querySelectorAll('a[href]')].filter((a) => itemLinkMatches().test(a.href));
     const items = [];
     const seen = new Set();
-    let firstRaw = null, firstRowEl = null;
     for (const link of links) {
       let el = link, found = null, rowEl = null;
       for (let up = 0; up < 14 && el; up++, el = el.parentElement) {
@@ -209,54 +197,23 @@
         if (it) { found = it; rowEl = el; break; }
       }
       if (!found) continue;
-      if (!firstRaw) { firstRaw = found; firstRowEl = rowEl; }
       const norm = normItem(found, link.href);
       if (!norm) continue;
       if (seen.has(norm._raw_id)) continue;
       seen.add(norm._raw_id);
-      const sel = readSelected(rowEl, found);
-      norm._selected = sel.on;
-      norm._selSource = sel.source;
+      norm._selected = readSelected(rowEl, found);
       items.push(norm);
     }
-    return { items, firstRaw, firstRowEl };
+    return items;
   }
 
-  let lastSig = '', diagLogged = false;
+  let lastSig = '';
   function scanAndRelay() {
-    let result;
-    try { result = scanCartItems(); } catch (e) { console.warn('[购物车导出·主世界] 扫描异常', e); return; }
-    const items = result.items;
+    let items;
+    try { items = scanCartItems(); } catch (e) { return; }
     const sig = items.map((i) => i._raw_id + ':' + (i._selected ? 1 : 0)).join('|');
     if (sig === lastSig && items.length) return;
     lastSig = sig;
-
-    const selCount = items.filter((i) => i._selected).length;
-    console.log('%c[购物车导出·主世界] 扫描 ' + items.length + ' 个商品（判定勾选 ' + selCount + '）', 'color:#1a73e8;font-weight:bold');
-    if (items[0]) console.log('  样例:', items[0]);
-
-    // 诊断（只打一次；用纯文本字符串输出，避免控制台显示成 Object 复制不出来）
-    if (!diagLogged && result.firstRaw) {
-      diagLogged = true;
-      const preview = {};
-      let rawJson = '';
-      try {
-        for (const k of Object.keys(result.firstRaw)) {
-          const v = result.firstRaw[k];
-          let pv;
-          if (typeof v === 'string') pv = '"' + (v.length > 70 ? v.slice(0, 70) + '…' : v) + '"';
-          else if (Array.isArray(v)) pv = 'arr[' + v.length + ']' + (v.length ? ' ' + JSON.stringify(v[0]).slice(0, 60) : '');
-          else if (v && typeof v === 'object') pv = 'obj{' + Object.keys(v).slice(0, 10).join(',') + '}';
-          else pv = String(v);
-          preview[k] = pv;
-        }
-        rawJson = JSON.stringify(result.firstRaw).replace(/https?:\/\/[^"]{50,}/g, '<url>').slice(0, 2500);
-      } catch (e) { rawJson = '序列化失败: ' + e; }
-      console.log('%c[诊断·首个商品] 选中下面 2 行复制发作者👇', 'color:#d2691e;font-weight:bold;font-size:13px');
-      console.log('FIELD_PREVIEW=' + JSON.stringify(preview));
-      console.log('RAW_JSON=' + rawJson);
-    }
-
     try { window.postMessage({ tag: TAG, kind: 'items', items }, '*'); } catch (e) {}
   }
 
@@ -265,26 +222,4 @@
   try { new MutationObserver(scheduleScan).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
   setInterval(scanAndRelay, 2500);
   setTimeout(scanAndRelay, 600);
-
-  // 兜底：fetch/XHR 拦截
-  const CART_URL = /cart\.taobao\.com|\/cart\b|mtop\.[\w.]*cart|trade\.[\w.]*cart|h5api\.m\.taobao\.com/i;
-  function relay(kind, url, body) { try { window.postMessage({ tag: TAG, kind, url: String(url || ''), body: String(body || '').slice(0, MAX) }, '*'); } catch (e) {} }
-  const _fetch = window.fetch;
-  if (typeof _fetch === 'function' && !_fetch.__tce) {
-    const wrapped = function (input) {
-      const url = (typeof input === 'string') ? input : (input && input.url) || '';
-      const p = _fetch.apply(this, arguments);
-      try { if (url && CART_URL.test(url)) p.then((resp) => { try { resp.clone().text().then((t) => { console.log('%c[购物车导出·命中] fetch', 'color:#9c27b0', url, 'len=' + t.length); relay('fetch', url, t); }).catch(() => {}); } catch (e) {} }).catch(() => {}); } catch (e) {}
-      return p;
-    };
-    wrapped.__tce = true; window.fetch = wrapped;
-  }
-  const _open = XMLHttpRequest.prototype.open, _send = XMLHttpRequest.prototype.send;
-  if (typeof _open === 'function' && !_open.__tce) {
-    XMLHttpRequest.prototype.open = function (method, url) { this.__tce_url = url; this.__tce_cart = !!url && CART_URL.test(String(url)); return _open.apply(this, arguments); };
-    XMLHttpRequest.prototype.send = function () { if (this.__tce_cart) this.addEventListener('load', () => { try { const t = this.responseText || ''; console.log('%c[购物车导出·命中] XHR', 'color:#9c27b0', this.__tce_url, 'len=' + t.length); relay('xhr', this.__tce_url, t); } catch (e) {} }); return _send.apply(this, arguments); };
-    _open.__tce = true;
-  }
-
-  console.log('%c[购物车导出·主世界] 已装：Fiber 逐行扫描 + 复选框读取 + fetch/XHR 兜底', 'color:#34a853;font-weight:bold');
 })();
