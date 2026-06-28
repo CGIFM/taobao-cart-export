@@ -102,8 +102,14 @@
   }
 
   // ============ 模式 + 可选列 选择弹窗 ============
-  function chooseMode() {
-    if (globalThis.__AP_FORCE_MODE) return Promise.resolve({ mode: globalThis.__AP_FORCE_MODE, extraCols: globalThis.__AP_FORCE_EXTRA || [] });
+  async function chooseMode() {
+    if (globalThis.__AP_FORCE_MODE) return { mode: globalThis.__AP_FORCE_MODE, extraCols: globalThis.__AP_FORCE_EXTRA || [] };
+    // 读取上次勾选的可选列（记忆功能）
+    var savedKeys = [];
+    try {
+      var r = await chrome.storage.local.get(['tce_extra_cols']);
+      if (r && Array.isArray(r.tce_extra_cols)) savedKeys = r.tce_extra_cols;
+    } catch (e) {}
     return new Promise(function (resolve) {
       var backdrop = document.createElement('div');
       backdrop.id = '__tce_export_chooser';
@@ -129,7 +135,7 @@
         var lbl = document.createElement('label');
         lbl.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:12.5px;color:#444;cursor:pointer;';
         var cb = document.createElement('input');
-        cb.type = 'checkbox'; cb.checked = false;
+        cb.type = 'checkbox'; cb.checked = savedKeys.indexOf(c.key) >= 0;
         cb.style.cssText = 'margin:0;width:14px;height:14px;cursor:pointer;';
         var sp = document.createElement('span'); sp.textContent = c.label;
         lbl.appendChild(cb); lbl.appendChild(sp);
@@ -149,6 +155,7 @@
         b.onmouseleave = function () { b.style.transform = ''; b.style.background = color + '0f'; };
         b.onclick = function () {
           var extraCols = EXTRA_COLS.filter(function (c) { return checks[c.key] && checks[c.key].checked; });
+          try { chrome.storage.local.set({ tce_extra_cols: extraCols.map(function (c) { return c.key; }) }); } catch (e) {}
           try { backdrop.remove(); } catch (e) {}
           resolve({ mode: mode, extraCols: extraCols });
         };

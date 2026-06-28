@@ -31,15 +31,6 @@
       alert('扫到 ' + items.length + ' 个商品，但没检测到勾选的。\n请勾选要导出的商品（点商品前的复选框✔），再点导出。');
       return;
     }
-    const s0 = selected[0] || {};
-    const diag = '准备导出 ' + selected.length + ' 件\n\n第一件：' + (s0.title || '?') +
-      '\n优惠前价格：' + (s0.price || '(空)') +
-      '\n优惠后价格：' + (s0.priceAfter || '(空)') +
-      '\n店铺：' + (s0.shop || '(空)') +
-      '\n商品ID：' + (s0.itemId || '(空)') +
-      '\n标签：' + (s0.tagsText || '(空)');
-    console.log('[购物车导出] ' + diag);
-    alert(diag + '\n\n（这是诊断弹窗，确认数据后点确定继续导出）');
     try {
       await globalThis.__tceExport(selected, 'taobao');
     } catch (err) {
