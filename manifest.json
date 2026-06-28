@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "111.0",
   "name": "淘宝购物车导出助手",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "把淘宝购物车勾选的商品一键导出为 Excel(.xlsx)，图片支持单元格内嵌或浮动两种模式。",
   "author": "FengMingyang",
   "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },

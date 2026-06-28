@@ -145,8 +145,12 @@
     let price = '';
     if (o.pay) price = o.pay.nowTitle || (o.pay.now != null ? '￥' + (o.pay.now / 100) : '');
     let priceAfter = '';
-    if (o.pay) priceAfter = o.pay.shopPromotionPriceTitle || o.pay.afterPromPriceTitle || '';
-    if (!priceAfter) priceAfter = price; // 无店铺优惠时，优惠后 = 优惠前（现价即实付价）
+    if (o.pay) {
+      // 实付价：优先 平台加补后(couponDiscountedTitle)，再 店铺优惠后(shopPromotionPriceTitle)，再 afterPromPrice
+      priceAfter = o.pay.couponDiscountedTitle || o.pay.shopPromotionPriceTitle || '';
+      if (!priceAfter && o.pay.afterPromPrice != null) priceAfter = '¥' + (o.pay.afterPromPrice / 100);
+    }
+    if (!priceAfter) priceAfter = price; // 都没有则=现价
     let shop = pick(o, ['shopTitle', 'shopName', 'shop']) || '';
     let tagsText = '';
     if (Array.isArray(o.tags)) tagsText = o.tags.map((t) => (t && t.text) ? t.text : '').filter(Boolean).join(' / ');
