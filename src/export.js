@@ -130,18 +130,34 @@
       optTitle.textContent = '可选追加列（勾选后追加到表格末尾）';
       var optBox = document.createElement('div');
       optBox.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 14px;background:#fafafa;border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:16px;';
+      // 全选
+      var allLbl = document.createElement('label');
+      allLbl.style.cssText = 'display:flex;align-items:center;gap:5px;width:100%;font-size:12.5px;font-weight:700;color:#222;cursor:pointer;border-bottom:1px solid #e5e5e5;padding-bottom:7px;margin-bottom:2px;';
+      var allCb = document.createElement('input');
+      allCb.type = 'checkbox'; allCb.style.cssText = 'margin:0;width:14px;height:14px;cursor:pointer;';
+      var allSp = document.createElement('span'); allSp.textContent = '全选';
+      allLbl.appendChild(allCb); allLbl.appendChild(allSp);
+      optBox.appendChild(allLbl);
       var checks = {};
+      function syncAll() {
+        allCb.checked = EXTRA_COLS.every(function (c) { return checks[c.key] && checks[c.key].checked; });
+      }
+      allCb.addEventListener('click', function () {
+        EXTRA_COLS.forEach(function (c) { if (checks[c.key]) checks[c.key].checked = allCb.checked; });
+      });
       EXTRA_COLS.forEach(function (c) {
         var lbl = document.createElement('label');
         lbl.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:12.5px;color:#444;cursor:pointer;';
         var cb = document.createElement('input');
         cb.type = 'checkbox'; cb.checked = savedKeys.indexOf(c.key) >= 0;
         cb.style.cssText = 'margin:0;width:14px;height:14px;cursor:pointer;';
+        cb.addEventListener('change', syncAll);
         var sp = document.createElement('span'); sp.textContent = c.label;
         lbl.appendChild(cb); lbl.appendChild(sp);
         optBox.appendChild(lbl);
         checks[c.key] = cb;
       });
+      syncAll();
       card.appendChild(optTitle); card.appendChild(optBox);
 
       // 模式按钮
