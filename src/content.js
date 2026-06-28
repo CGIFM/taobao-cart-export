@@ -31,6 +31,8 @@
       alert('扫到 ' + items.length + ' 个商品，但没检测到勾选的。\n请勾选要导出的商品（点商品前的复选框✔），再点导出。');
       return;
     }
+    const s0 = selected[0] || {};
+    console.log('[购物车导出] 导出', selected.length, '件。样例:', JSON.stringify({ title: s0.title, specs: s0.specs, price: s0.price, shop: s0.shop, itemId: s0.itemId, tagsText: s0.tagsText }));
     try {
       await globalThis.__tceExport(selected, 'taobao');
     } catch (err) {
