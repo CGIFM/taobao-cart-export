@@ -58,4 +58,5 @@
   if (document.body) injectButton();
   document.addEventListener('DOMContentLoaded', injectButton);
   setInterval(injectButton, 2000);
+  console.log('%c[购物车导出] 内容脚本已加载 v1.0.1', 'color:#ff4400;font-weight:bold');
 })();

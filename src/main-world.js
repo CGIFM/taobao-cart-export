@@ -232,4 +232,5 @@
   try { new MutationObserver(scheduleScan).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
   setInterval(scanAndRelay, 2500);
   setTimeout(scanAndRelay, 600);
+  console.log('%c[购物车导出] 主世界扫描已装 v1.0.1', 'color:#34a853;font-weight:bold');
 })();
