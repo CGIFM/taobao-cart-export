@@ -141,6 +141,12 @@
       if (!specs.length && o.sku.title) specs = [String(o.sku.title)];
     }
     if (!specs.length) specs = findSpec(o);
+    // 可选追加列的数据（默认不导出，用户勾选时才追加）
+    let price = '';
+    if (o.pay) price = o.pay.nowTitle || (o.pay.now != null ? '￥' + (o.pay.now / 100) : '');
+    let shop = pick(o, ['shopTitle', 'shopName', 'shop']) || '';
+    let tagsText = '';
+    if (Array.isArray(o.tags)) tagsText = o.tags.map((t) => (t && t.text) ? t.text : '').filter(Boolean).join(' / ');
     const title2 = typeof title === 'string' ? title : (title && (title.text || title.name || title.subject)) || '';
     if (!title2 && !itemId) return null;
     return {
@@ -149,6 +155,10 @@
       detailsUrl: String(detailsUrl || ''),
       quantity: Number(qty) >= 1 ? Number(qty) : 1,
       images: [asImgUrl(img)].filter(Boolean),
+      price: String(price || ''),
+      shop: String(shop || ''),
+      tagsText: tagsText,
+      itemId: itemId ? String(itemId) : '',
       _selected: false,
       _raw_id: cartId ? String(cartId) : (skuId ? ((itemId || '') + '_' + skuId) : (itemId ? String(itemId) : (detailsUrl || title2))),
     };

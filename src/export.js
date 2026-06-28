@@ -1,14 +1,11 @@
 /*!
- * export.js — 淘宝购物车导出助手 · xlsx 导出引擎（双模式）
+ * export.js — 淘宝购物车导出助手 · xlsx 导出引擎（双模式 + 可选追加列）
  * 固定 6 列：名称 | 规格 | 链接 | 数量 | 紧急程度 | 图片
+ * 点导出弹窗：① 选图片模式（嵌入/浮动）② 可选勾选追加列（价格/店铺/商品ID/标签），勾了追加到表格末尾。
  *
- * 点导出时弹窗二选一：
- *   - embedded（嵌入）：Excel 365 Rich Data，真·嵌单元格。Excel 365/2024+ 与新版 WPS 显示；旧版 WPS/旧版 Excel 显示 #VALUE!
- *   - floating（浮动）：标准浮动图锚定单元格，所有 WPS / 所有 Excel / 所有机器都显示
- *
- * 图片字节经 background service worker 拉取（扩展 host 权限，绕过 CORS）
+ * 图片字节经 background service worker 拉取（host 权限，绕过 CORS）
  * 暴露：globalThis.__tceExport(items, platform)
- * 全原创代码，无第三方版权。
+ * 全原创代码。
  */
 ;(function () {
   'use strict';
@@ -19,6 +16,14 @@
   var ROW_HEIGHT_PT = 74;
   var URGENCY_DEFAULT = '普通';
   var IMG_PLACEHOLDER = '__TCE_RICHIMG__';
+
+  // 可选追加列（勾选时追加到表格末尾，图片列之后）
+  var EXTRA_COLS = [
+    { key: 'price', label: '价格', width: 12 },
+    { key: 'shop', label: '店铺', width: 22 },
+    { key: 'itemId', label: '商品ID', width: 16 },
+    { key: 'tagsText', label: '标签/优惠', width: 30 },
+  ];
 
   var RD_RVT_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
     '<rvTypesInfo xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata2" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="x" xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><global><keyFlags>' +
@@ -44,12 +49,11 @@
     }).filter(Boolean).join(' / ');
   }
 
-  // 经 background 拉图片字节 → 专用 port，base64 回传
   function fetchImageArrayBuffer(url) {
     return new Promise(function (resolve) {
       var port;
       try { port = chrome.runtime.connect({ name: 'tce_img_fetch' }); }
-      catch (e) { console.warn('[购物车导出] connect 异常', url, e); return resolve(null); }
+      catch (e) { return resolve(null); }
       var done = false;
       port.onMessage.addListener(function (msg) {
         if (!msg || msg._tceImg !== true) return;
@@ -60,13 +64,10 @@
           var u8 = new Uint8Array(bin.length);
           for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
           resolve({ buf: u8, ext: msg.ext || 'jpeg' });
-        } else {
-          console.warn('[购物车导出] 图片拉取失败 →', url, '| 返回:', JSON.stringify(msg));
-          resolve(null);
-        }
+        } else { resolve(null); }
       });
       setTimeout(function () {
-        if (!done) { try { port.disconnect(); } catch (e) {} console.warn('[购物车导出] 图片超时(15s)', url); resolve(null); }
+        if (!done) { try { port.disconnect(); } catch (e) {} resolve(null); }
       }, 15000);
       try { port.postMessage({ url: url }); } catch (e) { resolve(null); }
     });
@@ -75,14 +76,12 @@
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function ts() {
     var d = new Date();
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-      '-' + pad(d.getHours()) + pad(d.getMinutes());
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes());
   }
   function toU8(raw) {
     if (raw instanceof Uint8Array) return raw;
     if (raw instanceof ArrayBuffer) return new Uint8Array(raw);
     if (ArrayBuffer.isView(raw)) return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength);
-    console.warn('[购物车导出] 未知图片数据类型:', Object.prototype.toString.call(raw));
     return new Uint8Array(0);
   }
   function replaceCell(xml, ref, newCell) {
@@ -90,7 +89,6 @@
     if (re.test(xml)) return xml.replace(re, newCell);
     re = new RegExp('<c r="' + ref + '"[^>]*/>');
     if (re.test(xml)) return xml.replace(re, newCell);
-    console.warn('[购物车导出] ⚠️ 没找到单元格', ref);
     return xml;
   }
   async function fetchImgEntry(imgUrl) {
@@ -102,47 +100,84 @@
     return { u8: u8, ext: img.ext || 'jpeg' };
   }
 
+  // ============ 模式 + 可选列 选择弹窗 ============
   function chooseMode() {
-    if (globalThis.__AP_FORCE_MODE) return Promise.resolve(globalThis.__AP_FORCE_MODE); // 测试钩子
+    if (globalThis.__AP_FORCE_MODE) return Promise.resolve({ mode: globalThis.__AP_FORCE_MODE, extraCols: globalThis.__AP_FORCE_EXTRA || [] });
     return new Promise(function (resolve) {
       var backdrop = document.createElement('div');
       backdrop.id = '__tce_export_chooser';
       backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:-apple-system,"Microsoft YaHei",system-ui,sans-serif;';
       var card = document.createElement('div');
-      card.style.cssText = 'background:#fff;border-radius:14px;padding:26px 24px 18px;box-shadow:0 12px 40px rgba(0,0,0,.3);width:440px;max-width:92vw;box-sizing:border-box;';
+      card.style.cssText = 'background:#fff;border-radius:14px;padding:24px 22px 16px;box-shadow:0 12px 40px rgba(0,0,0,.3);width:460px;max-width:92vw;box-sizing:border-box;';
       var title = document.createElement('div');
-      title.style.cssText = 'font-size:17px;font-weight:600;color:#222;margin-bottom:6px;';
+      title.style.cssText = 'font-size:17px;font-weight:600;color:#222;margin-bottom:4px;';
       title.textContent = '选择导出方式';
       var sub = document.createElement('div');
-      sub.style.cssText = 'font-size:12px;color:#888;margin-bottom:18px;';
-      sub.textContent = '两种只是图片列的存法不同，其它列完全一样';
+      sub.style.cssText = 'font-size:12px;color:#888;margin-bottom:14px;';
+      sub.textContent = '先勾选要追加的列（可选），再点导出模式';
+      card.appendChild(title); card.appendChild(sub);
+
+      // 可选列区
+      var optTitle = document.createElement('div');
+      optTitle.style.cssText = 'font-size:12px;color:#555;font-weight:600;margin-bottom:8px;';
+      optTitle.textContent = '可选追加列（勾选后追加到表格末尾）';
+      var optBox = document.createElement('div');
+      optBox.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 14px;background:#fafafa;border:1px solid #eee;border-radius:8px;padding:10px 12px;margin-bottom:16px;';
+      var checks = {};
+      EXTRA_COLS.forEach(function (c) {
+        var lbl = document.createElement('label');
+        lbl.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:12.5px;color:#444;cursor:pointer;';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.checked = false;
+        cb.style.cssText = 'margin:0;width:14px;height:14px;cursor:pointer;';
+        var sp = document.createElement('span'); sp.textContent = c.label;
+        lbl.appendChild(cb); lbl.appendChild(sp);
+        optBox.appendChild(lbl);
+        checks[c.key] = cb;
+      });
+      card.appendChild(optTitle); card.appendChild(optBox);
+
+      // 模式按钮
       var row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:12px;';
       function mkBtn(emoji, label, desc, color, mode) {
         var b = document.createElement('button');
-        b.style.cssText = 'flex:1;padding:16px 14px;border:1.5px solid ' + color + ';background:' + color + '0f;color:' + color + ';border-radius:10px;cursor:pointer;text-align:left;transition:transform .08s;';
-        b.innerHTML = '<div style="font-size:15px;font-weight:700;margin-bottom:6px;">' + emoji + ' ' + label + '</div><div style="font-size:11.5px;font-weight:400;line-height:1.5;opacity:.85;white-space:pre-line;">' + desc + '</div>';
+        b.style.cssText = 'flex:1;padding:14px 12px;border:1.5px solid ' + color + ';background:' + color + '0f;color:' + color + ';border-radius:10px;cursor:pointer;text-align:left;transition:transform .08s;';
+        b.innerHTML = '<div style="font-size:14px;font-weight:700;margin-bottom:5px;">' + emoji + ' ' + label + '</div><div style="font-size:11px;font-weight:400;line-height:1.5;opacity:.85;white-space:pre-line;">' + desc + '</div>';
         b.onmouseenter = function () { b.style.transform = 'translateY(-1px)'; b.style.background = color + '1a'; };
         b.onmouseleave = function () { b.style.transform = ''; b.style.background = color + '0f'; };
-        b.onclick = function () { try { backdrop.remove(); } catch (e) {} resolve(mode); };
+        b.onclick = function () {
+          var extraCols = EXTRA_COLS.filter(function (c) { return checks[c.key] && checks[c.key].checked; });
+          try { backdrop.remove(); } catch (e) {}
+          resolve({ mode: mode, extraCols: extraCols });
+        };
         return b;
       }
-      row.appendChild(mkBtn('🖼️', '导出嵌入', 'Excel 365 / 新版 WPS\n真·嵌在单元格里\n（旧版 WPS 会显示 #VALUE!）', '#1a73e8', 'embedded'));
-      row.appendChild(mkBtn('📦', '导出浮动', '所有 WPS / 所有 Excel\n兼容性最好，发给别人用这个\n（图浮在单元格上方）', '#34a853', 'floating'));
+      row.appendChild(mkBtn('🖼️', '导出嵌入', 'Excel 365 / 新版 WPS\n真·嵌单元格\n（旧版 WPS 显 #VALUE!）', '#1a73e8', 'embedded'));
+      row.appendChild(mkBtn('📦', '导出浮动', '所有 WPS / 所有 Excel\n兼容性最好\n（图浮单元格上方）', '#34a853', 'floating'));
+      card.appendChild(row);
+
       var cancel = document.createElement('div');
-      cancel.style.cssText = 'text-align:center;margin-top:16px;font-size:12px;color:#aaa;cursor:pointer;';
+      cancel.style.cssText = 'text-align:center;margin-top:14px;font-size:12px;color:#aaa;cursor:pointer;';
       cancel.textContent = '取消';
       cancel.onclick = function () { try { backdrop.remove(); } catch (e) {} resolve(null); };
-      card.appendChild(title); card.appendChild(sub); card.appendChild(row); card.appendChild(cancel);
+      card.appendChild(cancel);
+
       backdrop.appendChild(card);
       document.body.appendChild(backdrop);
     });
   }
 
-  function writeRows(ws, items) {
+  // ============ 公共：写表头 + 行容器 ============
+  function writeRows(ws, items, extraCols) {
     var widths = [42, 30, 44, 8, 12, 14.5];
     for (var c = 0; c < widths.length; c++) ws.getColumn(c + 1).width = widths[c];
-    var header = ws.addRow(COLS);
+    extraCols.forEach(function (ec, i) {
+      var def = EXTRA_COLS.filter(function (e) { return e.key === ec.key; })[0];
+      ws.getColumn(COLS.length + 1 + i).width = (def && def.width) || 16;
+    });
+    var headerLabels = COLS.concat(extraCols.map(function (c) { return c.label; }));
+    var header = ws.addRow(headerLabels);
     header.height = 22;
     header.eachCell(function (cell) {
       cell.font = { bold: true };
@@ -170,7 +205,21 @@
     row.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
     row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
   }
+  // 一行数据：base 6 列 + 追加列
+  function rowValues(it, placeholder, extraCols) {
+    var base = [
+      it.title || '',
+      specsText(it.specs),
+      it.detailsUrl || '',
+      (it.quantity != null && it.quantity !== '') ? Number(it.quantity) : '',
+      URGENCY_DEFAULT,
+      placeholder,
+    ];
+    var extra = extraCols.map(function (c) { return (it[c.key] != null && it[c.key] !== '') ? String(it[c.key]) : ''; });
+    return base.concat(extra);
+  }
 
+  // ============ 嵌入：Rich Data ============
   async function injectRichData(buffer, cellImages, JSZip) {
     var succ = [];
     for (var i = 0; i < cellImages.length; i++) if (cellImages[i].img) succ.push(cellImages[i]);
@@ -219,53 +268,48 @@
     return await zip.generateAsync({ type: 'arraybuffer', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
 
-  async function buildEmbedded(items, platform) {
+  async function buildEmbedded(items, platform, extraCols) {
     var ExcelJS = window.ExcelJS || globalThis.ExcelJS;
     var JSZip = window.JSZip || globalThis.JSZip;
     if (!ExcelJS) throw new Error('ExcelJS 未加载');
     if (!JSZip) throw new Error('JSZip 未加载');
     var wb = new ExcelJS.Workbook();
     var ws = wb.addWorksheet('购物车');
-    var rows = writeRows(ws, items);
+    var rows = writeRows(ws, items, extraCols);
     var cellImages = [];
-    var ok = 0, fail = 0;
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i], it = r.item;
-      var row = ws.addRow([it.title || '', specsText(it.specs), it.detailsUrl || '', (it.quantity != null && it.quantity !== '') ? Number(it.quantity) : '', URGENCY_DEFAULT, IMG_PLACEHOLDER]);
+      var row = ws.addRow(rowValues(it, IMG_PLACEHOLDER, extraCols));
       styleDataRow(row);
       var entry = { ref: 'F' + row.number, img: null };
       var img = await fetchImgEntry(r.imgUrl);
-      if (img) { entry.img = img; ok++; console.log('[购物车导出·嵌入] 图', String(r.imgUrl).slice(0, 50), img.u8.length + 'B'); }
-      else { if (r.imgUrl) row.getCell(6).value = String(r.imgUrl); else row.getCell(6).value = ''; fail++; }
+      if (img) entry.img = img;
+      else if (r.imgUrl) row.getCell(6).value = String(r.imgUrl);
       cellImages.push(entry);
     }
-    console.log('[购物车导出·嵌入] 成功 ' + ok + ' / 失败 ' + fail);
     var buffer = await wb.xlsx.writeBuffer();
     buffer = await injectRichData(buffer, cellImages, JSZip);
     return { buffer: buffer, filename: '淘宝购物车导出-' + (platform || 'cart').replace(/[^a-zA-Z0-9_-]/g, '') + '-' + ts() + '-嵌入.xlsx' };
   }
 
-  async function buildFloating(items, platform) {
+  async function buildFloating(items, platform, extraCols) {
     var ExcelJS = window.ExcelJS || globalThis.ExcelJS;
     if (!ExcelJS) throw new Error('ExcelJS 未加载');
     var wb = new ExcelJS.Workbook();
     var ws = wb.addWorksheet('购物车');
-    var rows = writeRows(ws, items);
-    var ok = 0, fail = 0;
+    var rows = writeRows(ws, items, extraCols);
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i], it = r.item;
-      var row = ws.addRow([it.title || '', specsText(it.specs), it.detailsUrl || '', (it.quantity != null && it.quantity !== '') ? Number(it.quantity) : '', URGENCY_DEFAULT, '']);
+      var row = ws.addRow(rowValues(it, '', extraCols));
       styleDataRow(row);
       var img = await fetchImgEntry(r.imgUrl);
       if (img) {
         try {
           var imgId = wb.addImage({ buffer: img.u8, extension: img.ext });
           ws.addImage(imgId, { tl: { col: IMG_COL, row: row.number - 1 }, ext: { width: IMG_SIZE, height: IMG_SIZE } });
-          ok++; console.log('[购物车导出·浮动] 图', String(r.imgUrl).slice(0, 50), img.u8.length + 'B');
-        } catch (e) { fail++; row.getCell(6).value = String(r.imgUrl || ''); console.warn('[购物车导出·浮动] addImage 抛错', e); }
-      } else { if (r.imgUrl) row.getCell(6).value = String(r.imgUrl); fail++; }
+        } catch (e) { if (r.imgUrl) row.getCell(6).value = String(r.imgUrl); }
+      } else if (r.imgUrl) { row.getCell(6).value = String(r.imgUrl); }
     }
-    console.log('[购物车导出·浮动] 成功 ' + ok + ' / 失败 ' + fail);
     var buffer = await wb.xlsx.writeBuffer();
     return { buffer: buffer, filename: '淘宝购物车导出-' + (platform || 'cart').replace(/[^a-zA-Z0-9_-]/g, '') + '-' + ts() + '-浮动.xlsx' };
   }
@@ -281,12 +325,10 @@
 
   async function customExport(items, platform) {
     var old = document.getElementById('__tce_export_chooser'); if (old) old.remove();
-    var mode = await chooseMode();
-    if (!mode) { console.log('[购物车导出] 用户取消'); return; }
-    console.log('[购物车导出] 模式=' + mode + '，共', (items || []).length, '件商品');
-    var out = await (mode === 'floating' ? buildFloating(items || [], platform) : buildEmbedded(items || [], platform));
+    var choice = await chooseMode();
+    if (!choice) return;
+    var out = await (choice.mode === 'floating' ? buildFloating(items || [], platform, choice.extraCols) : buildEmbedded(items || [], platform, choice.extraCols));
     download(out.buffer, out.filename);
-    console.log('[购物车导出] 完成:', out.filename);
   }
 
   globalThis.__tceExport = customExport;
