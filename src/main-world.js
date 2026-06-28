@@ -146,6 +146,7 @@
     if (o.pay) price = o.pay.nowTitle || (o.pay.now != null ? '￥' + (o.pay.now / 100) : '');
     let priceAfter = '';
     if (o.pay) priceAfter = o.pay.shopPromotionPriceTitle || o.pay.afterPromPriceTitle || '';
+    if (!priceAfter) priceAfter = price; // 无店铺优惠时，优惠后 = 优惠前（现价即实付价）
     let shop = pick(o, ['shopTitle', 'shopName', 'shop']) || '';
     let tagsText = '';
     if (Array.isArray(o.tags)) tagsText = o.tags.map((t) => (t && t.text) ? t.text : '').filter(Boolean).join(' / ');
