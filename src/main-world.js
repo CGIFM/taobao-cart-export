@@ -144,6 +144,8 @@
     // 可选追加列的数据（默认不导出，用户勾选时才追加）
     let price = '';
     if (o.pay) price = o.pay.nowTitle || (o.pay.now != null ? '￥' + (o.pay.now / 100) : '');
+    let priceAfter = '';
+    if (o.pay) priceAfter = o.pay.shopPromotionPriceTitle || o.pay.afterPromPriceTitle || '';
     let shop = pick(o, ['shopTitle', 'shopName', 'shop']) || '';
     let tagsText = '';
     if (Array.isArray(o.tags)) tagsText = o.tags.map((t) => (t && t.text) ? t.text : '').filter(Boolean).join(' / ');
@@ -156,6 +158,7 @@
       quantity: Number(qty) >= 1 ? Number(qty) : 1,
       images: [asImgUrl(img)].filter(Boolean),
       price: String(price || ''),
+      priceAfter: String(priceAfter || ''),
       shop: String(shop || ''),
       tagsText: tagsText,
       itemId: itemId ? String(itemId) : '',

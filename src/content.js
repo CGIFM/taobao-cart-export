@@ -33,7 +33,8 @@
     }
     const s0 = selected[0] || {};
     const diag = '准备导出 ' + selected.length + ' 件\n\n第一件：' + (s0.title || '?') +
-      '\n价格：' + (s0.price || '(空)') +
+      '\n优惠前价格：' + (s0.price || '(空)') +
+      '\n优惠后价格：' + (s0.priceAfter || '(空)') +
       '\n店铺：' + (s0.shop || '(空)') +
       '\n商品ID：' + (s0.itemId || '(空)') +
       '\n标签：' + (s0.tagsText || '(空)');
