@@ -32,7 +32,13 @@
       return;
     }
     const s0 = selected[0] || {};
-    console.log('[购物车导出] 导出', selected.length, '件。样例:', JSON.stringify({ title: s0.title, specs: s0.specs, price: s0.price, shop: s0.shop, itemId: s0.itemId, tagsText: s0.tagsText }));
+    const diag = '准备导出 ' + selected.length + ' 件\n\n第一件：' + (s0.title || '?') +
+      '\n价格：' + (s0.price || '(空)') +
+      '\n店铺：' + (s0.shop || '(空)') +
+      '\n商品ID：' + (s0.itemId || '(空)') +
+      '\n标签：' + (s0.tagsText || '(空)');
+    console.log('[购物车导出] ' + diag);
+    alert(diag + '\n\n（这是诊断弹窗，确认数据后点确定继续导出）');
     try {
       await globalThis.__tceExport(selected, 'taobao');
     } catch (err) {
