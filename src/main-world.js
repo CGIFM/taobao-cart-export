@@ -301,6 +301,38 @@
               else if (v && typeof v === 'object') diagPayload[k] = '{' + Object.keys(v).slice(0,15).join(',') + '}';
               else diagPayload[k] = String(v);
             }
+            // 沿 Fiber 父级收集所有含 shop/seller/store/nick 的字段值
+            var fk = fiberKey(el);
+            if (fk) {
+              var fiber = el[fk], depth = 0;
+              var shopFindings = [];
+              while (fiber && depth < 30) {
+                var mp = fiber.memoizedProps;
+                if (mp && typeof mp === 'object') {
+                  try {
+                    for (var mk of Object.keys(mp)) {
+                      if (/shop|seller|store|nick|wang|merchant|vend/i.test(mk)) {
+                        var mv = mp[mk];
+                        if (typeof mv === 'string') shopFindings.push(mk + '=' + mv.slice(0,80));
+                        else if (mv && typeof mv === 'object') shopFindings.push(mk + '=' + JSON.stringify(mv).slice(0,120));
+                      }
+                      // 也看子对象
+                      if (mp[mk] && typeof mp[mk] === 'object' && !Array.isArray(mp[mk])) {
+                        for (var sk of Object.keys(mp[mk])) {
+                          if (/shop|seller|store|nick|wang|merchant|vend/i.test(sk)) {
+                            var sv = mp[mk][sk];
+                            if (typeof sv === 'string' && sv) shopFindings.push(mk + '.' + sk + '=' + sv.slice(0,80));
+                          }
+                        }
+                      }
+                    }
+                  } catch(e) {}
+                }
+                fiber = fiber.return;
+                depth++;
+              }
+              diagPayload.__SHOP_SCAN = shopFindings.length ? shopFindings.join(' | ') : '(没找到含shop/seller/store/nick的字段)';
+            }
             break;
           }
         }
