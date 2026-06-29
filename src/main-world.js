@@ -225,32 +225,43 @@
     return items;
   }
 
-  let lastSig = '', diagLogged = false;
+  let lastSig = '', diagLogged = false, diagPayload = null;
   function scanAndRelay() {
     let items;
     try { items = scanCartItems(); } catch (e) { return; }
     const sig = items.map((i) => i._raw_id + ':' + (i._selected ? 1 : 0)).join('|');
     if (sig === lastSig && items.length) return;
     lastSig = sig;
-    try { window.postMessage({ tag: TAG, kind: 'items', items }, '*'); } catch (e) {}
 
-    // 诊断：首次扫描打印首个商品的完整字段（纯文本，一键复制）
+    // 首次扫描：dump 首件原始字段（供 content 弹窗显示）
     if (!diagLogged && items.length) {
       diagLogged = true;
-      var firstItem = items[0];
-      var preview = {};
-      for (var k of Object.keys(firstItem)) {
-        var v = firstItem[k];
-        if (typeof v === 'string') preview[k] = '"' + (v.length > 80 ? v.slice(0,80)+'…' : v) + '"';
-        else if (Array.isArray(v)) preview[k] = 'arr[' + v.length + ']';
-        else if (v && typeof v === 'object') preview[k] = 'obj{' + Object.keys(v).slice(0,10).join(',') + '}';
-        else preview[k] = String(v);
-      }
-      var rawJson = '';
-      try { rawJson = JSON.stringify(firstItem).replace(/https?:\/\/[^"]{50,}/g, '<url>').slice(0, 2000); } catch(e) { rawJson = '(序列化失败)'; }
-      console.log('%c[诊断] 选中下面整段复制发给作者👇', 'color:#d2691e;font-weight:bold;font-size:13px');
-      console.log('DIAG_DATA=' + JSON.stringify({preview: preview, raw: rawJson}));
+      try {
+        // 重新扫一遍拿原始对象
+        var links = [...document.querySelectorAll('a[href]')].filter((a) => itemLinkMatches().test(a.href));
+        for (var link of links) {
+          var el = link, found = null;
+          for (var up = 0; up < 14 && el; up++, el = el.parentElement) {
+            var it = findItemInFiber(el);
+            if (it) { found = it; break; }
+          }
+          if (found) {
+            diagPayload = {};
+            for (var k of Object.keys(found)) {
+              var v = found[k];
+              if (typeof v === 'string') diagPayload[k] = v.length > 100 ? v.slice(0,100)+'…' : v;
+              else if (typeof v === 'number') diagPayload[k] = v;
+              else if (Array.isArray(v)) diagPayload[k] = '[' + v.length + ']';
+              else if (v && typeof v === 'object') diagPayload[k] = '{' + Object.keys(v).slice(0,15).join(',') + '}';
+              else diagPayload[k] = String(v);
+            }
+            break;
+          }
+        }
+      } catch(e) {}
     }
+
+    try { window.postMessage({ tag: TAG, kind: 'items', items, diag: diagPayload }, '*'); } catch (e) {}
   }
 
   let timer = null;

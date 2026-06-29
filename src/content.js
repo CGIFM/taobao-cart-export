@@ -9,6 +9,7 @@
   'use strict';
   const TAG = '__TCE_CART__';
   let fiberItems = [];
+  let rawDiag = null;
 
   // 页面识别
   const isOrderPage = location.hostname === 'buyertrade.taobao.com';
@@ -20,6 +21,7 @@
     const d = e.data;
     if (!d || d.tag !== TAG || d.kind !== 'items' || !Array.isArray(d.items)) return;
     fiberItems = d.items;
+    if (d.diag) rawDiag = d.diag;
   });
 
   function gatherItems() {
@@ -51,6 +53,9 @@
       + '图片：' + (s0.images && s0.images.length ? s0.images[0].slice(0,60) : '(空)') + '\n'
       + '优惠前：' + (s0.price || '(空)') + ' | 优惠后：' + (s0.priceAfter || '(空)') + '\n'
       + '店铺：' + (s0.shop || '(空)') + ' | 商品ID：' + (s0.itemId || '(空)');
+    if (rawDiag) {
+      diagText += '\n\n=== 原始字段名+值 ===\n' + JSON.stringify(rawDiag, null, 2);
+    }
     console.log('[淘宝导出] ' + diagText);
     if (!window.__tceDiagShown) {
       window.__tceDiagShown = true;
