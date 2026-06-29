@@ -207,8 +207,26 @@
     return false;
   }
 
-  // 找店铺名：Fiber + DOM 多策略
+  // 找店铺名：精确选择器 + Fiber 兜底
   function findShopName(el, itemTitle) {
+    // 策略0(最准): DOM class 选择器——订单页的 shopInfoName--
+    var container = el;
+    for (var lv = 0; lv < 12; lv++) {
+      if (!container || container.tagName === 'BODY') break;
+      container = container.parentElement;
+      if (!container) break;
+      var shopEls = container.querySelectorAll('[class*="shopInfoName"]');
+      if (shopEls.length) {
+        var n = shopEls[0].textContent.trim();
+        if (n) return n;
+      }
+      // 购物车页兜底：shopTitle / sellerNick
+      var stEls = container.querySelectorAll('[class*="shopTitle"], [class*="sellerNick"], [class*="shopName"]');
+      for (var si = 0; si < stEls.length; si++) {
+        var st = stEls[si].textContent.trim();
+        if (st && st.length >= 2 && st.length < 50) return st;
+      }
+    }
     // 策略1: Fiber 父级
     var fk = fiberKey(el);
     if (fk) {
@@ -223,25 +241,6 @@
           }
         }
         fiber = fiber.return; depth++;
-      }
-    }
-    // 策略2: DOM 核弹法——从商品行往上 8 层拿到订单容器，取容器内文字，去掉商品标题和已知 UI 文字，第一个短文本就是店铺名
-    var container = el;
-    for (var lv = 0; lv < 8; lv++) {
-      if (!container || container.tagName === 'BODY') break;
-      container = container.parentElement;
-    }
-    if (container && container !== el) {
-      var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
-      var UI_WORDS = /^(进店|联系|客服|收藏|删除|分享|评价|追加|http|查看|更多|展开|收起|旺旺|交易|待发|待收|已发|已收|退款|退货|投诉|举报|订单|详情|提醒|确定|取消|批量|共计|实付|运费|优惠|满|件|个|元|￥|¥|\d|\s|\.|-|selected|勾选|全选|导出|普通|加急|颜色|分类|尺码|规格|数量|图片|链接|名称|紧急|程度)/;
-      var node;
-      while (node = walker.nextNode()) {
-        var t = node.textContent.trim();
-        if (t.length >= 2 && t.length <= 30 && t !== itemTitle && !UI_WORDS.test(t) && !/^[\d\s￥¥.,元]+$/.test(t)) {
-          // 进一步排除：不是标题的一部分、不是价格
-          if (itemTitle && itemTitle.indexOf(t) >= 0) continue;
-          return t;
-        }
       }
     }
     return '';
