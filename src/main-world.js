@@ -207,6 +207,39 @@
     return false;
   }
 
+  // 沿 Fiber 往上找店铺名（订单页的店铺名在父级组件）
+  function findShopName(el) {
+    var fk = fiberKey(el);
+    if (!fk) return '';
+    var fiber = el[fk], depth = 0;
+    var SHOP_KEYS = ['sellerNick', 'shopName', 'storeName', 'sellerName', 'seller', 'shop', 'store'];
+    while (fiber && depth < 30) {
+      var mp = fiber.memoizedProps;
+      if (mp && typeof mp === 'object') {
+        // 直接在 props 上找
+        for (var i = 0; i < SHOP_KEYS.length; i++) {
+          var v = mp[SHOP_KEYS[i]];
+          if (typeof v === 'string' && v.length > 0 && v.length < 100) return v;
+        }
+        // 在 props 的子对象里找
+        try {
+          for (var k of Object.keys(mp)) {
+            var sv = mp[k];
+            if (sv && typeof sv === 'object' && !Array.isArray(sv)) {
+              for (var j = 0; j < SHOP_KEYS.length; j++) {
+                var v2 = sv[SHOP_KEYS[j]];
+                if (typeof v2 === 'string' && v2.length > 0 && v2.length < 100) return v2;
+              }
+            }
+          }
+        } catch (e) {}
+      }
+      fiber = fiber.return;
+      depth++;
+    }
+    return '';
+  }
+
   function itemLinkMatches() {
     return /item\.htm|taobao\.com\/i\.|detail\.tmall\.com|^https?:\/\/a\.m\.taobao/i;
   }
@@ -226,6 +259,11 @@
       if (seen.has(norm._raw_id)) continue;
       seen.add(norm._raw_id);
       norm._selected = readSelected(rowEl, found);
+      // 订单页：商品本身没店铺名，从父级 Fiber 找
+      if (!norm.shop && rowEl) {
+        var shop = findShopName(rowEl);
+        if (shop) norm.shop = shop;
+      }
       items.push(norm);
     }
     return items;
