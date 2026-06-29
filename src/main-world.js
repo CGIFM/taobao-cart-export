@@ -146,17 +146,15 @@
     if (o.pay) {
       price = o.pay.nowTitle || (o.pay.now != null ? '￥' + (o.pay.now / 100) : '');
     } else if (o.priceInfo && typeof o.priceInfo === 'object') {
-      var fee = o.priceInfo.actualTotalFee;
-      if (fee != null) price = '￥' + (Number(fee) / 100);
+      // 订单页：promotion=优惠前价，actualTotalFee=优惠后实付价（都是带￥字符串）
+      price = o.priceInfo.promotion || o.priceInfo.actualTotalFee || '';
     }
     let priceAfter = '';
     if (o.pay) {
       priceAfter = o.pay.couponDiscountedTitle || o.pay.shopPromotionPriceTitle || '';
       if (!priceAfter && o.pay.afterPromPrice != null) priceAfter = '¥' + (o.pay.afterPromPrice / 100);
     } else if (o.priceInfo && typeof o.priceInfo === 'object') {
-      var prom = o.priceInfo.promotion;
-      if (typeof prom === 'string' && prom) priceAfter = prom;
-      else if (prom && typeof prom === 'object' && prom.title) priceAfter = prom.title;
+      priceAfter = o.priceInfo.actualTotalFee || o.priceInfo.promotion || '';
     }
     if (!priceAfter) priceAfter = price; // 都没有则=现价
     let shop = pick(o, ['shopTitle', 'shopName', 'shop']) || '';
