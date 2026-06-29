@@ -3,3 +3,4 @@
 *.crx
 dist/
 node_modules/
+tutorial-assets/
