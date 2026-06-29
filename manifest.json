@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "minimum_chrome_version": "111.0",
-  "name": "淘宝购物车导出助手",
-  "version": "1.0.6",
-  "description": "把淘宝购物车勾选的商品一键导出为 Excel(.xlsx)，图片支持单元格内嵌或浮动两种模式。",
+  "name": "淘宝导出助手",
+  "version": "1.1.0",
+  "description": "把淘宝购物车 / 已买到的宝贝一键导出为 Excel(.xlsx)，图片支持单元格内嵌或浮动两种模式。",
   "author": "FengMingyang",
   "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
   "action": {
@@ -19,14 +19,14 @@
   ],
   "content_scripts": [
     {
-      "matches": ["https://cart.taobao.com/*"],
+      "matches": ["https://cart.taobao.com/*", "https://buyertrade.taobao.com/*"],
       "js": ["src/main-world.js"],
       "world": "MAIN",
       "run_at": "document_start",
       "all_frames": true
     },
     {
-      "matches": ["https://cart.taobao.com/*"],
+      "matches": ["https://cart.taobao.com/*", "https://buyertrade.taobao.com/*"],
       "js": ["vendor/exceljs.min.js", "vendor/jszip.min.js", "src/export.js", "src/cart-parse.js", "src/content.js"],
       "run_at": "document_idle"
     }

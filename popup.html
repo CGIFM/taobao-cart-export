@@ -7,15 +7,17 @@
   h1 { font-size: 15px; margin: 0 0 10px; display:flex; align-items:center; gap:6px; }
   .tag { display:inline-block; background:#fff4e5; color:#d2691e; font-size:10px; padding:2px 7px; border-radius:10px; font-weight:600; }
   p { font-size: 12px; color: #555; margin: 8px 0; line-height: 1.55; }
-  button { width:100%; padding:11px; border:none; border-radius:9px; background:linear-gradient(135deg,#ff7a00,#ff4400); color:#fff; font-size:13px; font-weight:700; cursor:pointer; margin-top:10px; }
+  button { width:100%; padding:11px; border:none; border-radius:9px; background:linear-gradient(135deg,#ff7a00,#ff4400); color:#fff; font-size:13px; font-weight:700; cursor:pointer; margin-top:8px; }
   button:hover { filter: brightness(1.05); }
+  button.sec { background:#1a73e8; }
   .author { margin-top:14px; font-size:11px; color:#aaa; text-align:center; }
 </style>
 </head>
 <body>
-  <h1>🛒 淘宝购物车导出助手 <span class="tag">v1.0.0</span></h1>
-  <p><b>用法：</b>打开淘宝购物车 → 勾选要导出的商品 → 点页面右下角橙色「导出购物车」按钮 → 选"嵌入/浮动" → 下载 .xlsx。</p>
-  <button id="open">打开淘宝购物车</button>
+  <h1>🛒 淘宝导出助手 <span class="tag">v1.1.0</span></h1>
+  <p><b>用法：</b>打开购物车或已买到的宝贝 → 勾选商品（订单页自动全选）→ 点右下角橙色按钮 → 选模式 → 下载 .xlsx。</p>
+  <button id="openCart">打开淘宝购物车</button>
+  <button id="openOrders" class="sec">打开已买到的宝贝</button>
   <p class="author">by FengMingyang</p>
   <script src="popup.js"></script>
 </body>

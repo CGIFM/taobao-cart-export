@@ -313,7 +313,7 @@
     }
     var buffer = await wb.xlsx.writeBuffer();
     buffer = await injectRichData(buffer, cellImages, JSZip);
-    return { buffer: buffer, filename: '淘宝购物车导出-' + (platform || 'cart').replace(/[^a-zA-Z0-9_-]/g, '') + '-' + ts() + '-嵌入.xlsx' };
+    return { buffer: buffer, filename: '淘宝' + (platform === 'orders' ? '订单' : '购物车') + '导出-' + ts() + '-嵌入.xlsx' };
   }
 
   async function buildFloating(items, platform, extraCols) {
@@ -335,7 +335,7 @@
       } else if (r.imgUrl) { row.getCell(6).value = String(r.imgUrl); }
     }
     var buffer = await wb.xlsx.writeBuffer();
-    return { buffer: buffer, filename: '淘宝购物车导出-' + (platform || 'cart').replace(/[^a-zA-Z0-9_-]/g, '') + '-' + ts() + '-浮动.xlsx' };
+    return { buffer: buffer, filename: '淘宝' + (platform === 'orders' ? '订单' : '购物车') + '导出-' + ts() + '-浮动.xlsx' };
   }
 
   function download(buffer, filename) {
