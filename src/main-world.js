@@ -257,7 +257,17 @@
             diagPayload = {};
             for (var k of Object.keys(found)) {
               var v = found[k];
-              if (typeof v === 'string') diagPayload[k] = v.length > 100 ? v.slice(0,100)+'…' : v;
+              if (k === 'priceInfo' && v && typeof v === 'object') {
+                // priceInfo 展开到子字段值
+                var pi = {};
+                for (var pk of Object.keys(v)) {
+                  var pv = v[pk];
+                  if (pv == null) pi[pk] = '(null)';
+                  else if (typeof pv === 'object') pi[pk] = JSON.stringify(pv).slice(0,200);
+                  else pi[pk] = String(pv);
+                }
+                diagPayload[k] = pi;
+              } else if (typeof v === 'string') diagPayload[k] = v.length > 100 ? v.slice(0,100)+'…' : v;
               else if (typeof v === 'number') diagPayload[k] = v;
               else if (Array.isArray(v)) diagPayload[k] = '[' + v.length + ']';
               else if (v && typeof v === 'object') diagPayload[k] = '{' + Object.keys(v).slice(0,15).join(',') + '}';
