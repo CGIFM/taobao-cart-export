@@ -22,6 +22,7 @@
     { key: 'price', label: '优惠前价格', width: 12 },
     { key: 'priceAfter', label: '优惠后价格', width: 12 },
     { key: 'shop', label: '店铺', width: 22 },
+    { key: 'orderId2', label: '订单号', width: 22 },
     { key: 'itemId', label: '商品ID', width: 16 },
     { key: 'tagsText', label: '标签/优惠', width: 30 },
   ];

@@ -171,6 +171,7 @@
       price: String(price || ''),
       priceAfter: String(priceAfter || ''),
       shop: String(shop || ''),
+      orderId2: '',
       tagsText: tagsText,
       itemId: itemId ? String(itemId) : '',
       _selected: false,
@@ -269,6 +270,22 @@
       if (!norm.shop && rowEl) {
         var shop = findShopName(rowEl, norm.title);
         if (shop) norm.shop = shop;
+      }
+      // 订单页：找订单号
+      if (!norm.orderId2 && rowEl) {
+        var oidEls = rowEl.parentElement ? rowEl.parentElement.querySelectorAll('[class*="shopInfoOrderId"]') : [];
+        if (!oidEls.length) {
+          for (var olv = 0; olv < 12 && rowEl; olv++) {
+            rowEl = rowEl.parentElement;
+            if (!rowEl) break;
+            oidEls = rowEl.querySelectorAll('[class*="shopInfoOrderId"]');
+            if (oidEls.length) break;
+          }
+        }
+        if (oidEls.length) {
+          var oidText = oidEls[0].textContent.trim().replace(/^订单号[:：\s]*/, '');
+          norm.orderId2 = oidText;
+        }
       }
       items.push(norm);
     }
