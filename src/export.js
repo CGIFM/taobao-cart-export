@@ -19,6 +19,7 @@
 
   // 可选追加列（勾选时追加到表格末尾，图片列之后）
   var EXTRA_COLS = [
+    { key: 'orderDate', label: '日期', width: 14 },
     { key: 'price', label: '优惠前价格', width: 12 },
     { key: 'priceAfter', label: '优惠后价格', width: 12 },
     { key: 'shop', label: '店铺', width: 22 },

@@ -125,6 +125,19 @@
 
     panel.update('采集完成！共 ' + allItems.length + ' 件（' + (endPage - startPage + 1) + ' 页）');
 
+    // 日期范围过滤
+    if (result.dateFrom || result.dateTo) {
+      var before = allItems.length;
+      allItems = allItems.filter(function (it) {
+        if (!it.orderDate) return true; // 无日期的保留
+        var d = it.orderDate.replace(/[/\-]/g, '-').trim();
+        if (result.dateFrom && d < result.dateFrom) return false;
+        if (result.dateTo && d > result.dateTo) return false;
+        return true;
+      });
+      panel.update('日期过滤：' + before + ' → ' + allItems.length + ' 件');
+    }
+
     if (!allItems.length) {
       panel.close();
       alert('没采集到商品。'); return;
@@ -195,6 +208,19 @@
       quickRow.appendChild(quickBtn('全部', function () { inp1.value = 1; inp2.value = totalPage; }));
       card.appendChild(quickRow);
 
+      // 日期范围
+      var dateRow = document.createElement('div');
+      dateRow.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap';
+      var dlbl = document.createElement('span'); dlbl.textContent = '日期'; dlbl.style.cssText = 'font-size:13px;font-weight:600;color:#555';
+      var dFrom = document.createElement('input'); dFrom.type = 'date'; dFrom.placeholder = '开始';
+      dFrom.style.cssText = 'padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;min-width:100px';
+      var dDash = document.createElement('span'); dDash.textContent = '—'; dDash.style.color = '#999';
+      var dTo = document.createElement('input'); dTo.type = 'date'; dTo.placeholder = '结束';
+      dTo.style.cssText = 'padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;min-width:100px';
+      var dHint = document.createElement('span'); dHint.style.cssText = 'font-size:11px;color:#aaa;width:100%'; dHint.textContent = '（可选）填了只导这个日期范围的订单';
+      dateRow.appendChild(dlbl); dateRow.appendChild(dFrom); dateRow.appendChild(dDash); dateRow.appendChild(dTo); dateRow.appendChild(dHint);
+      card.appendChild(dateRow);
+
       var status = document.createElement('div');
       status.style.cssText = 'font-size:13px;color:#666;margin-bottom:14px;min-height:20px';
       card.appendChild(status);
@@ -224,6 +250,8 @@
         backdrop.remove();
         resolve({
           start: s, end: e,
+          dateFrom: dFrom.value || '',
+          dateTo: dTo.value || '',
           panelObj: {
             update: function (txt) { console.log('[多页采集] ' + txt); },
             close: function () {}

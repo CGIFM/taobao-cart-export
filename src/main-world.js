@@ -172,6 +172,7 @@
       priceAfter: String(priceAfter || ''),
       shop: String(shop || ''),
       orderId2: '',
+      orderDate: '',
       tagsText: tagsText,
       itemId: itemId ? String(itemId) : '',
       _selected: false,
@@ -271,20 +272,24 @@
         var shop = findShopName(rowEl, norm.title);
         if (shop) norm.shop = shop;
       }
-      // 订单页：找订单号
+      // 订单页：找订单号 + 日期（在同一个父级容器里）
       if (!norm.orderId2 && rowEl) {
-        var oidEls = rowEl.parentElement ? rowEl.parentElement.querySelectorAll('[class*="shopInfoOrderId"]') : [];
-        if (!oidEls.length) {
-          for (var olv = 0; olv < 12 && rowEl; olv++) {
-            rowEl = rowEl.parentElement;
-            if (!rowEl) break;
-            oidEls = rowEl.querySelectorAll('[class*="shopInfoOrderId"]');
-            if (oidEls.length) break;
+        var oidContainer = rowEl;
+        for (var olv = 0; olv < 12; olv++) {
+          if (!oidContainer) break;
+          oidContainer = oidContainer.parentElement;
+          if (!oidContainer) break;
+          // 订单号
+          if (!norm.orderId2) {
+            var oidEls = oidContainer.querySelectorAll('[class*="shopInfoOrderId"]');
+            if (oidEls.length) norm.orderId2 = oidEls[0].textContent.trim().replace(/^订单号[:：\s]*/, '');
           }
-        }
-        if (oidEls.length) {
-          var oidText = oidEls[0].textContent.trim().replace(/^订单号[:：\s]*/, '');
-          norm.orderId2 = oidText;
+          // 日期
+          if (!norm.orderDate) {
+            var dateEls = oidContainer.querySelectorAll('[class*="shopInfoOrderTime"], [class*="orderTime"], [class*="OrderTime"]');
+            if (dateEls.length) norm.orderDate = dateEls[0].textContent.trim();
+          }
+          if (norm.orderId2 && norm.orderDate) break;
         }
       }
       items.push(norm);
