@@ -105,12 +105,14 @@
 
   // ============ 模式 + 可选列 选择弹窗 ============
   async function chooseMode() {
-    if (globalThis.__AP_FORCE_MODE) return { mode: globalThis.__AP_FORCE_MODE, extraCols: globalThis.__AP_FORCE_EXTRA || [] };
-    // 读取上次勾选的可选列（记忆功能）
+    if (globalThis.__AP_FORCE_MODE) return { mode: globalThis.__AP_FORCE_MODE, extraCols: globalThis.__AP_FORCE_EXTRA || [], showYen: true };
+    // 读取上次勾选的可选列 + ￥设置（记忆功能）
     var savedKeys = [];
+    var savedYen = true;
     try {
-      var r = await chrome.storage.local.get(['tce_extra_cols']);
+      var r = await chrome.storage.local.get(['tce_extra_cols', 'tce_show_yen']);
       if (r && Array.isArray(r.tce_extra_cols)) savedKeys = r.tce_extra_cols;
+      if (r && typeof r.tce_show_yen === 'boolean') savedYen = r.tce_show_yen;
     } catch (e) {}
     return new Promise(function (resolve) {
       var backdrop = document.createElement('div');
@@ -162,6 +164,20 @@
       syncAll();
       card.appendChild(optTitle); card.appendChild(optBox);
 
+      // 日期范围（价格￥符号）
+      var yenRow = document.createElement('div');
+      yenRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:12.5px;color:#444';
+      var yenCb = document.createElement('input');
+      yenCb.type = 'checkbox'; yenCb.checked = savedYen; yenCb.id = '__tce_yen';
+      yenCb.style.cssText = 'margin:0;width:14px;height:14px;cursor:pointer';
+      var yenLbl = document.createElement('label'); yenLbl.textContent = '价格显示 ￥ 符号';
+      yenLbl.style.cssText = 'cursor:pointer;display:flex;align-items:center;gap:5px';
+      yenLbl.appendChild(yenCb);
+      var yenNote = document.createElement('span'); yenNote.style.cssText = 'font-size:11px;color:#aaa;margin-left:4px'; yenNote.textContent = '（取消勾选则纯数字，如 339.00）';
+      yenLbl.appendChild(yenNote);
+      yenRow.appendChild(yenLbl);
+      card.appendChild(yenRow);
+
       // 模式按钮
       var row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:12px;';
@@ -173,9 +189,10 @@
         b.onmouseleave = function () { b.style.transform = ''; b.style.background = color + '0f'; };
         b.onclick = function () {
           var extraCols = EXTRA_COLS.filter(function (c) { return checks[c.key] && checks[c.key].checked; });
-          try { chrome.storage.local.set({ tce_extra_cols: extraCols.map(function (c) { return c.key; }) }); } catch (e) {}
+          var showYen = document.getElementById('__tce_yen') ? document.getElementById('__tce_yen').checked : true;
+          try { chrome.storage.local.set({ tce_extra_cols: extraCols.map(function (c) { return c.key; }), tce_show_yen: showYen }); } catch (e) {}
           try { backdrop.remove(); } catch (e) {}
-          resolve({ mode: mode, extraCols: extraCols });
+          resolve({ mode: mode, extraCols: extraCols, showYen: showYen });
         };
         return b;
       }
@@ -353,6 +370,13 @@
     var old = document.getElementById('__tce_export_chooser'); if (old) old.remove();
     var choice = await chooseMode();
     if (!choice) return;
+    // 处理 ￥ 符号
+    if (choice.showYen === false) {
+      items.forEach(function (it) {
+        if (it.price) it.price = String(it.price).replace(/^[￥¥]/, '').trim();
+        if (it.priceAfter) it.priceAfter = String(it.priceAfter).replace(/^[￥¥]/, '').trim();
+      });
+    }
     var out = await (choice.mode === 'floating' ? buildFloating(items || [], platform, choice.extraCols) : buildEmbedded(items || [], platform, choice.extraCols));
     download(out.buffer, out.filename);
   }
