@@ -308,7 +308,7 @@
       var entry = { ref: 'F' + row.number, img: null };
       var img = await fetchImgEntry(r.imgUrl);
       if (img) entry.img = img;
-      else if (r.imgUrl) row.getCell(6).value = String(r.imgUrl);
+      else row.getCell(6).value = r.imgUrl ? String(r.imgUrl) : ''; // 有链接兜底，无链接清空占位
       cellImages.push(entry);
     }
     var buffer = await wb.xlsx.writeBuffer();
@@ -331,8 +331,8 @@
         try {
           var imgId = wb.addImage({ buffer: img.u8, extension: img.ext });
           ws.addImage(imgId, { tl: { col: IMG_COL, row: row.number - 1 }, ext: { width: IMG_SIZE, height: IMG_SIZE } });
-        } catch (e) { if (r.imgUrl) row.getCell(6).value = String(r.imgUrl); }
-      } else if (r.imgUrl) { row.getCell(6).value = String(r.imgUrl); }
+        } catch (e) { row.getCell(6).value = r.imgUrl ? String(r.imgUrl) : ''; }
+      } else { row.getCell(6).value = r.imgUrl ? String(r.imgUrl) : ''; }
     }
     var buffer = await wb.xlsx.writeBuffer();
     return { buffer: buffer, filename: '淘宝' + (platform === 'orders' ? '订单' : '购物车') + '导出-' + ts() + '-浮动.xlsx' };

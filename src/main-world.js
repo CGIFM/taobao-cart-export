@@ -143,12 +143,20 @@
     if (!specs.length) specs = findSpec(o);
     // 可选追加列的数据（默认不导出，用户勾选时才追加）
     let price = '';
-    if (o.pay) price = o.pay.nowTitle || (o.pay.now != null ? '￥' + (o.pay.now / 100) : '');
+    if (o.pay) {
+      price = o.pay.nowTitle || (o.pay.now != null ? '￥' + (o.pay.now / 100) : '');
+    } else if (o.priceInfo && typeof o.priceInfo === 'object') {
+      var fee = o.priceInfo.actualTotalFee;
+      if (fee != null) price = '￥' + (Number(fee) / 100);
+    }
     let priceAfter = '';
     if (o.pay) {
-      // 实付价：优先 平台加补后(couponDiscountedTitle)，再 店铺优惠后(shopPromotionPriceTitle)，再 afterPromPrice
       priceAfter = o.pay.couponDiscountedTitle || o.pay.shopPromotionPriceTitle || '';
       if (!priceAfter && o.pay.afterPromPrice != null) priceAfter = '¥' + (o.pay.afterPromPrice / 100);
+    } else if (o.priceInfo && typeof o.priceInfo === 'object') {
+      var prom = o.priceInfo.promotion;
+      if (typeof prom === 'string' && prom) priceAfter = prom;
+      else if (prom && typeof prom === 'object' && prom.title) priceAfter = prom.title;
     }
     if (!priceAfter) priceAfter = price; // 都没有则=现价
     let shop = pick(o, ['shopTitle', 'shopName', 'shop']) || '';
