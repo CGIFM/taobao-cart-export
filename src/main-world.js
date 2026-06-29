@@ -225,7 +225,7 @@
     return items;
   }
 
-  let lastSig = '';
+  let lastSig = '', diagLogged = false;
   function scanAndRelay() {
     let items;
     try { items = scanCartItems(); } catch (e) { return; }
@@ -233,6 +233,24 @@
     if (sig === lastSig && items.length) return;
     lastSig = sig;
     try { window.postMessage({ tag: TAG, kind: 'items', items }, '*'); } catch (e) {}
+
+    // 诊断：首次扫描打印首个商品的完整字段（纯文本，一键复制）
+    if (!diagLogged && items.length) {
+      diagLogged = true;
+      var firstItem = items[0];
+      var preview = {};
+      for (var k of Object.keys(firstItem)) {
+        var v = firstItem[k];
+        if (typeof v === 'string') preview[k] = '"' + (v.length > 80 ? v.slice(0,80)+'…' : v) + '"';
+        else if (Array.isArray(v)) preview[k] = 'arr[' + v.length + ']';
+        else if (v && typeof v === 'object') preview[k] = 'obj{' + Object.keys(v).slice(0,10).join(',') + '}';
+        else preview[k] = String(v);
+      }
+      var rawJson = '';
+      try { rawJson = JSON.stringify(firstItem).replace(/https?:\/\/[^"]{50,}/g, '<url>').slice(0, 2000); } catch(e) { rawJson = '(序列化失败)'; }
+      console.log('%c[诊断] 选中下面整段复制发给作者👇', 'color:#d2691e;font-weight:bold;font-size:13px');
+      console.log('DIAG_DATA=' + JSON.stringify({preview: preview, raw: rawJson}));
+    }
   }
 
   let timer = null;

@@ -31,7 +31,6 @@
     const items = gatherItems();
     let selected;
     if (isOrderPage) {
-      // 订单页没有勾选框，全部导出
       selected = items;
     } else {
       selected = items.filter((it) => it._selected);
@@ -43,6 +42,44 @@
     if (!selected.length) {
       alert('扫到 ' + items.length + ' 个商品，但没检测到勾选的。\n请勾选要导出的商品（点商品前的复选框✔），再点导出。');
       return;
+    }
+    // 诊断弹窗 + 一键复制按钮
+    var s0 = selected[0] || {};
+    var diagText = '页面：' + (isOrderPage ? '订单页' : '购物车') + ' | 共 ' + selected.length + ' 件\n'
+      + '首件：' + (s0.title || '?') + '\n'
+      + '规格：' + JSON.stringify(s0.specs) + '\n'
+      + '图片：' + (s0.images && s0.images.length ? s0.images[0].slice(0,60) : '(空)') + '\n'
+      + '优惠前：' + (s0.price || '(空)') + ' | 优惠后：' + (s0.priceAfter || '(空)') + '\n'
+      + '店铺：' + (s0.shop || '(空)') + ' | 商品ID：' + (s0.itemId || '(空)');
+    console.log('[淘宝导出] ' + diagText);
+    if (!window.__tceDiagShown) {
+      window.__tceDiagShown = true;
+      var dlg = document.createElement('div');
+      dlg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:14px;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.3);z-index:2147483647;max-width:500px;font-family:-apple-system,"Microsoft YaHei",system-ui,sans-serif;';
+      var pre = document.createElement('pre');
+      pre.textContent = diagText;
+      pre.style.cssText = 'font-size:13px;color:#333;white-space:pre-wrap;margin:0 0 14px;line-height:1.7';
+      var btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:10px';
+      var copyBtn = document.createElement('button');
+      copyBtn.textContent = '📋 一键复制';
+      copyBtn.style.cssText = 'flex:1;padding:10px;border:none;border-radius:8px;background:#1a73e8;color:#fff;font-size:13px;font-weight:700;cursor:pointer';
+      copyBtn.onclick = function() {
+        navigator.clipboard.writeText(diagText).then(function() {
+          copyBtn.textContent = '✅ 已复制！';
+          setTimeout(function() { dlg.remove(); }, 1000);
+        });
+      };
+      var closeBtn = document.createElement('button');
+      closeBtn.textContent = '继续导出';
+      closeBtn.style.cssText = 'flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#555;font-size:13px;font-weight:600;cursor:pointer';
+      closeBtn.onclick = function() { dlg.remove(); };
+      btnRow.appendChild(copyBtn); btnRow.appendChild(closeBtn);
+      dlg.appendChild(pre); dlg.appendChild(btnRow);
+      var backdrop = document.createElement('div');
+      backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2147483646';
+      backdrop.onclick = function() { backdrop.remove(); dlg.remove(); };
+      document.body.appendChild(backdrop); document.body.appendChild(dlg);
     }
     try {
       await globalThis.__tceExport(selected, PAGE.platform);
