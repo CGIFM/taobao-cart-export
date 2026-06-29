@@ -108,7 +108,7 @@
     if (globalThis.__AP_FORCE_MODE) return { mode: globalThis.__AP_FORCE_MODE, extraCols: globalThis.__AP_FORCE_EXTRA || [], showYen: true };
     // 读取上次勾选的可选列 + ￥设置（记忆功能）
     var savedKeys = [];
-    var savedYen = true;
+    var savedYen = false;
     try {
       var r = await chrome.storage.local.get(['tce_extra_cols', 'tce_show_yen']);
       if (r && Array.isArray(r.tce_extra_cols)) savedKeys = r.tce_extra_cols;
