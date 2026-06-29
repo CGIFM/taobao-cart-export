@@ -5,123 +5,137 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>淘宝购物车导出助手 · 使用教程</title>
 <style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; line-height: 1.75; color: #222; background: #f5f6f8; margin: 0; }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
-  h1 { font-size: 28px; margin: 10px 0 6px; }
-  .sub { color: #777; margin: 0 0 8px; }
-  .badge { display:inline-block; background:#fff4e5; color:#d2691e; padding:3px 11px; border-radius:12px; font-size:13px; font-weight:700; }
-  h2 { font-size: 20px; margin: 38px 0 6px; padding-bottom: 7px; border-bottom: 2px solid #ff4400; display:inline-block; }
-  .step { background:#fff; border-radius:12px; padding:18px 20px; margin:14px 0; box-shadow:0 2px 8px rgba(0,0,0,.06); }
-  .step .body h3 { margin:0 0 6px; font-size:16px; display:flex; align-items:center; gap:8px; }
-  .step .body p { margin:6px 0; color:#555; font-size:14px; }
-  .stepnum { display:inline-flex; width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#ff7a00,#ff4400); color:#fff; font-weight:700; font-size:15px; align-items:center; justify-content:center; flex:0 0 28px; }
-  .kbd { background:#f0f0f0; padding:2px 7px; border-radius:4px; font-size:13px; font-family:ui-monospace,Menlo,monospace; border:1px solid #e0e0e0; }
-  .shot { max-width:100%; border-radius:8px; border:1px solid #d4d4d4; box-shadow:0 4px 14px rgba(0,0,0,.09); margin:8px 0; display:block; }
-  .btn { display:inline-block; padding:10px 20px; border-radius:8px; font-size:14px; font-weight:700; color:#fff; text-decoration:none; }
-  .btn-blue { background:#1a73e8; } .btn-green { background:#34a853; } .btn-orange { background:linear-gradient(135deg,#ff7a00,#ff4400); }
-  .install-card { background:#fff; border-radius:14px; padding:24px; margin:16px 0; box-shadow:0 2px 12px rgba(0,0,0,.08); }
-  .install-card h3 { font-size:18px; margin:0 0 8px; }
-  .req { display:inline-block; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:600; margin-left:8px; }
-  .req-ok { background:#e6f4ea; color:#137333; } .req-vip { background:#fce8e6; color:#c5221f; }
-  .exp-btn { background:linear-gradient(135deg,#ff7a00,#ff4400); color:#fff; padding:11px 17px; border-radius:22px; font-weight:700; font-size:14px; display:inline-block; box-shadow:0 4px 12px rgba(255,68,0,.45); }
-  .ck { display:inline-flex; align-items:center; gap:5px; margin:4px 10px 4px 0; font-size:13px; color:#444; }
-  .box { width:15px; height:15px; border:2px solid #888; border-radius:3px; display:inline-block; flex:0 0 15px; }
-  .box.on { background:#1a73e8; border-color:#1a73e8; position:relative; }
-  .box.on::after { content:'✓'; color:#fff; font-size:11px; position:absolute; top:-2px; left:1px; }
-  table.mocktbl { border-collapse:collapse; width:100%; font-size:12px; margin:10px 0; }
-  table.mocktbl th, table.mocktbl td { border:1px solid #ccc; padding:6px 5px; text-align:center; }
-  table.mocktbl th { background:#efefef; }
-  table.mocktbl .imgcell { background:#fafafa; }
-  table.mocktbl .pic { background:linear-gradient(135deg,#cdeaea,#b8d8d8); color:#fff; font-size:9px; display:inline-block; width:40px; height:26px; line-height:26px; border-radius:3px; }
-  .note { background:#fffaf3; border-left:4px solid #ff7a00; padding:10px 14px; margin:14px 0; border-radius:0 8px 8px 0; font-size:14px; color:#7a5430; }
-  .note b { color:#935; }
-  .chooser { border:1px solid #eee; border-radius:10px; padding:14px; background:#fcfcfc; margin:8px 0; }
-  .chooser .ttl { font-weight:700; font-size:14px; margin-bottom:6px; }
-  .chooser .opts { background:#fafafa; border:1px solid #eee; border-radius:8px; padding:8px 10px; margin:6px 0; }
-  .chooser .all { font-weight:700; color:#222; border-bottom:1px solid #e5e5e5; padding-bottom:6px; margin-bottom:4px; }
-  .footer { margin-top:44px; padding-top:18px; border-top:1px solid #ddd; color:#999; font-size:13px; }
-  .divider { text-align:center; margin:30px 0; color:#ccc; font-size:14px; letter-spacing:4px; }
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;line-height:1.75;color:#222;background:#f5f6f8;margin:0}
+  .wrap{max-width:880px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:28px;margin:10px 0 6px}
+  .sub{color:#777;margin:0 0 8px}
+  .badge{display:inline-block;background:#fff4e5;color:#d2691e;padding:3px 11px;border-radius:12px;font-size:13px;font-weight:700}
+  h2{font-size:20px;margin:38px 0 6px;padding-bottom:7px;border-bottom:2px solid #ff4400;display:inline-block}
+  .install-card{background:#fff;border-radius:14px;padding:24px;margin:16px 0;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+  .install-card h3{font-size:18px;margin:0 0 8px}
+  .req{display:inline-block;padding:3px 10px;border-radius:10px;font-size:12px;font-weight:600;margin-left:8px}
+  .req-ok{background:#e6f4ea;color:#137333}.req-warn{background:#fff4e5;color:#b06000}
+  .step{background:#fff;border-radius:12px;padding:18px 20px;margin:14px 0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .step h3{margin:0 0 6px;font-size:16px;display:flex;align-items:center;gap:8px}
+  .step p{margin:6px 0;color:#555;font-size:14px}
+  .stepnum{display:inline-flex;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ff7a00,#ff4400);color:#fff;font-weight:700;font-size:15px;align-items:center;justify-content:center;flex:0 0 28px}
+  .kbd{background:#f0f0f0;padding:2px 7px;border-radius:4px;font-size:13px;font-family:ui-monospace,Menlo,monospace;border:1px solid #e0e0e0}
+  .btn{display:inline-block;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;color:#fff;text-decoration:none}
+  .btn-blue{background:#1a73e8}
+  /* 图片 + 高亮 */
+  .shot-wrap{position:relative;display:inline-block;margin:8px 0;max-width:100%}
+  .shot{max-width:100%;border-radius:8px;border:1px solid #d4d4d4;box-shadow:0 4px 14px rgba(0,0,0,.09);display:block;cursor:zoom-in;transition:transform .15s}
+  .shot:hover{transform:scale(1.01)}
+  .hl{position:absolute;border:3px solid #ff6600;border-radius:6px;pointer-events:none;animation:pulse 2s ease-in-out infinite;z-index:2}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(255,102,0,.3),0 0 20px rgba(255,102,0,.15)}50%{box-shadow:0 0 0 8px rgba(255,102,0,.08),0 0 30px rgba(255,102,0,.2)}}
+  /* lightbox */
+  #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:99999;align-items:center;justify-content:center;cursor:zoom-out}
+  #lightbox img{max-width:96%;max-height:96%;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  /* 导出部分 */
+  .exp-btn{background:linear-gradient(135deg,#ff7a00,#ff4400);color:#fff;padding:11px 17px;border-radius:22px;font-weight:700;font-size:14px;display:inline-block;box-shadow:0 4px 12px rgba(255,68,0,.45)}
+  .ck{display:inline-flex;align-items:center;gap:5px;margin:4px 10px 4px 0;font-size:13px;color:#444}
+  .box{width:15px;height:15px;border:2px solid #888;border-radius:3px;display:inline-block;flex:0 0 15px}
+  .box.on{background:#1a73e8;border-color:#1a73e8;position:relative}
+  .box.on::after{content:'✓';color:#fff;font-size:11px;position:absolute;top:-2px;left:1px}
+  table.mocktbl{border-collapse:collapse;width:100%;font-size:12px;margin:10px 0}
+  table.mocktbl th,table.mocktbl td{border:1px solid #ccc;padding:6px 5px;text-align:center}
+  table.mocktbl th{background:#efefef}
+  table.mocktbl .imgcell{background:#fafafa}
+  table.mocktbl .pic{background:linear-gradient(135deg,#cdeaea,#b8d8d8);color:#fff;font-size:9px;display:inline-block;width:40px;height:26px;line-height:26px;border-radius:3px}
+  .note{background:#fffaf3;border-left:4px solid #ff7a00;padding:10px 14px;margin:14px 0;border-radius:0 8px 8px 0;font-size:14px;color:#7a5430}
+  .note b{color:#935}
+  .chooser{border:1px solid #eee;border-radius:10px;padding:14px;background:#fcfcfc;margin:8px 0}
+  .chooser .ttl{font-weight:700;font-size:14px;margin-bottom:6px}
+  .chooser .opts{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:8px 10px;margin:6px 0}
+  .chooser .all{font-weight:700;color:#222;border-bottom:1px solid #e5e5e5;padding-bottom:6px;margin-bottom:4px}
+  .divider{text-align:center;margin:30px 0;color:#ccc;font-size:14px;letter-spacing:4px}
+  .footer{margin-top:44px;padding-top:18px;border-top:1px solid #ddd;color:#999;font-size:13px}
 </style>
 </head>
 <body>
+<div id="lightbox" onclick="this.style.display='none'"><img id="lb-img"></div>
+<script>function zoom(e){document.getElementById('lb-img').src=e.src;document.getElementById('lightbox').style.display='flex'}</script>
+
 <div class="wrap">
   <span class="badge">v1.0.6</span>
   <h1>🛒 淘宝购物车导出助手 · 使用教程</h1>
-  <p class="sub">把淘宝购物车里勾选的商品一键导出为 Excel(.xlsx)，图片支持单元格内嵌/浮动，可选追加优惠前/后价格等列。</p>
+  <p class="sub">把淘宝购物车里勾选的商品一键导出为 Excel(.xlsx)，图片支持单元格内嵌/浮动，可选追加优惠前/后价格等列。<br>（💡 下方截图<b>点击可放大</b>，橙色框是重点位置）</p>
 
   <!-- ============ 安装 ============ -->
-  <h2>一、安装</h2>
-  <p>下面两种方式<b>任选其一</b>，装完效果一样。</p>
+  <h2>一、安装（任选一种）</h2>
 
-  <!-- 方式一：商店一键安装 -->
+  <!-- 方式一 -->
   <div class="install-card">
-    <h3>方式一：从 Chrome 商店安装（一键）<span class="req req-ok">需能访问 Google</span></h3>
-    <p style="color:#555;font-size:14px">如果你的网络环境<b>能正常访问谷歌</b>（海外 / 有代理），直接点下面的按钮一键安装：</p>
-    <p>
-      <!-- TODO: 把下面 href="#" 换成你的 Chrome 商店链接 -->
-      <a class="btn btn-blue" href="#">🔗 点这里从 Chrome 商店安装</a>
-    </p>
-    <div class="note">打不开这个链接？说明你的网络<b>访问不了 Google</b>（国内常见）。没关系，请用下面的<b>方式二（VIP 安装）</b>。</div>
+    <h3>方式一：Chrome 商店一键安装 <span class="req req-ok">需能访问 Google</span></h3>
+    <p style="color:#555;font-size:14px">网络环境<b>能访问谷歌</b>（海外/有代理），直接点按钮一键装：</p>
+    <p><a class="btn btn-blue" href="#">🔗 从 Chrome 商店安装</a></p>
+    <div class="note">打不开这个链接？说明访问不了 Google（国内常见）。用下面的<b>方式二</b>。</div>
   </div>
 
-  <div class="divider">— 无法访问？用下面的 VIP 方式 —</div>
+  <div class="divider">— 打不开上面链接？用方式二 —</div>
 
-  <!-- 方式二：VIP 加载已解压 -->
+  <!-- 方式二：压缩包安装 -->
   <div class="install-card">
-    <h3>方式二：VIP 安装（加载已解压）<span class="req req-vip">无需访问 Google</span></h3>
-    <p style="color:#555;font-size:14px">打不开上面的链接？用这个方法——<b>任何网络都能装</b>，离线也行。大约 1 分钟。</p>
+    <h3>方式二：压缩包安装方式 <span class="req req-warn">无需 Google，任何网络都行</span></h3>
+    <p style="color:#555;font-size:14px">下载压缩包 → 解压 → 加载到浏览器。约 1 分钟，离线也行。</p>
 
-    <div class="step"><div class="body">
-      <h3><span class="stepnum">1</span>解压压缩包</h3>
-      <p>把发你的 <span class="kbd">淘宝购物车导出助手-v1.0.6.zip</span> 解压，得到文件夹 <span class="kbd">淘宝购物车导出助手</span>。<b>放到固定位置，别删别移。</b></p>
-    </div></div>
+    <div class="step"><h3><span class="stepnum">1</span>解压压缩包</h3>
+      <p>把下载的 <span class="kbd">淘宝购物车导出助手-v1.0.6.zip</span> <b>右键 → 解压</b>（Mac 双击即可），得到文件夹 <span class="kbd">淘宝购物车导出助手</span>。</p>
+      <p style="color:#e40;font-size:13px">⚠️ 把这个文件夹<b>放到固定位置</b>（如 D 盘 / 文档），<b>别放下载/桌面</b>（临时目录会被清理），<b>别删别移动</b>——删了扩展就失效。</p>
+    </div>
 
-    <div class="step"><div class="body">
-      <h3><span class="stepnum">2</span>打开扩展管理页</h3>
-      <p>Chrome（或 Edge / 360 / Brave）地址栏输入 <span class="kbd">chrome://extensions</span> 回车，或点右上角扩展菜单 →「管理扩展程序」。</p>
-      <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/bc3ab8c5-0d48-445a-b347-ba0775737aaf.png" alt="打开扩展管理页">
-    </div></div>
+    <div class="step"><h3><span class="stepnum">2</span>打开扩展管理页</h3>
+      <p>Chrome（或 Edge / 360 / Brave）地址栏输入 <span class="kbd">chrome://extensions</span> 回车。或点右上角扩展菜单 →「管理扩展程序」。</p>
+      <div class="shot-wrap">
+        <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/bc3ab8c5-0d48-445a-b347-ba0775737aaf.png" alt="打开扩展管理页" onclick="zoom(this)">
+        <div class="hl" style="top:3%;left:28%;width:44%;height:5%"></div>
+      </div>
+    </div>
 
-    <div class="step"><div class="body">
-      <h3><span class="stepnum">3</span>打开「开发者模式」</h3>
+    <div class="step"><h3><span class="stepnum">3</span>打开「开发者模式」</h3>
       <p>页面<b>右上角</b>找到「开发者模式」开关，打开它。</p>
-      <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/7bc5acc3-fff1-4242-93ef-5de9dc26c5b5.png" alt="打开开发者模式">
-    </div></div>
+      <div class="shot-wrap">
+        <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/7bc5acc3-fff1-4242-93ef-5de9dc26c5b5.png" alt="开发者模式" onclick="zoom(this)">
+        <div class="hl" style="top:2%;right:2%;width:22%;height:7%"></div>
+      </div>
+    </div>
 
-    <div class="step"><div class="body">
-      <h3><span class="stepnum">4</span>点「加载已解压的扩展程序」，选文件夹</h3>
-      <p>左上角出现「加载已解压的扩展程序」按钮，点它，选中第 1 步那个 <span class="kbd">淘宝购物车导出助手</span> 文件夹。</p>
-      <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/2229cc5c-d4e6-4b59-b9c2-f6fc19bcccfb.png" alt="加载已解压的扩展程序">
-      <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/8fed1b24-3d49-4c77-995b-08889e42ac4b.png" alt="选择文件夹">
-    </div></div>
+    <div class="step"><h3><span class="stepnum">4</span>点「加载已解压的扩展程序」，选文件夹</h3>
+      <p>左上角出现「加载已解压的扩展程序」按钮，点它 → 选中第 1 步那个 <span class="kbd">淘宝购物车导出助手</span> 文件夹（选文件夹<b>本身</b>，不是里面的文件）→ 点「选择」。</p>
+      <div class="shot-wrap">
+        <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/2229cc5c-d4e6-4b59-b9c2-f6fc19bcccfb.png" alt="加载已解压" onclick="zoom(this)">
+        <div class="hl" style="top:4%;left:2%;width:30%;height:7%"></div>
+      </div>
+      <div class="shot-wrap">
+        <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/8fed1b24-3d49-4c77-995b-08889e42ac4b.png" alt="选择文件夹" onclick="zoom(this)">
+        <div class="hl" style="top:30%;left:30%;width:30%;height:12%"></div>
+      </div>
+    </div>
 
-    <div class="step"><div class="body">
-      <h3><span class="stepnum">5</span>装好了 ✅</h3>
-      <p>扩展列表出现「淘宝购物车导出助手」，版本号 <b>1.0.6</b> = 成功。</p>
-      <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/dfd6139f-4776-49f8-a192-5f98457a2ecc.png" alt="安装完成">
-    </div></div>
-
-    <div class="note"><b>提示：</b>每次启动浏览器可能弹「已停用开发者模式扩展」黄条，点「保留」即可，不影响使用。</div>
+    <div class="step"><h3><span class="stepnum">5</span>装好了 ✅</h3>
+      <p>扩展列表出现「淘宝购物车导出助手」，版本 <b>1.0.6</b> = 成功。</p>
+      <div class="shot-wrap">
+        <img class="shot" src="https://di8mn0rali2ic.cloudfront.net/uploads/b83a946a-b89f-473a-9019-b81234a6b985/dfd6139f-4776-49f8-a192-5f98457a2ecc.png" alt="安装完成" onclick="zoom(this)">
+      </div>
+      <div class="note"><b>提示：</b>每次启动浏览器可能弹「已停用开发者模式扩展」黄条 → 点「保留」即可，不影响使用。</div>
+    </div>
   </div>
 
   <!-- ============ 导出 ============ -->
   <h2>二、导出购物车</h2>
 
-  <div class="step"><div class="body">
-    <h3><span class="stepnum">1</span>打开淘宝购物车，勾选要导出的商品</h3>
+  <div class="step"><h3><span class="stepnum">1</span>打开淘宝购物车，勾选要导出的商品</h3>
     <p>进入 <span class="kbd">https://cart.taobao.com</span>，<b>勾选</b>要导出的商品（点商品前的复选框✔）。只导勾选的。</p>
-  </div></div>
+  </div>
 
-  <div class="step"><div class="body">
-    <h3><span class="stepnum">2</span>点页面右下角橙色「导出购物车」按钮</h3>
-    <p>扩展会在购物车页<b>右下角</b>放一个橙色按钮，点它。</p>
+  <div class="step"><h3><span class="stepnum">2</span>点页面右下角橙色「导出购物车」按钮</h3>
+    <p>扩展在购物车页<b>右下角</b>放了一个橙色按钮，点它。</p>
     <p style="text-align:center;margin:16px 0"><span class="exp-btn">📥 导出购物车</span></p>
-  </div></div>
+  </div>
 
-  <div class="step"><div class="body">
-    <h3><span class="stepnum">3</span>勾选追加列（可选）+ 选图片模式</h3>
-    <p>弹窗里上半是<b>可选追加列</b>（勾了追加到末尾，<b>下次自动记住</b>），下半是<b>图片模式</b>二选一。</p>
+  <div class="step"><h3><span class="stepnum">3</span>勾选追加列（可选）+ 选图片模式</h3>
+    <p>弹窗上半是<b>可选追加列</b>（勾了追加到末尾，<b>下次自动记住</b>），下半是<b>图片模式</b>二选一。</p>
     <div class="chooser">
       <div class="ttl">选择导出方式</div>
       <div style="font-size:12px;color:#888;margin-bottom:8px">先勾选要追加的列（可选），再点导出模式</div>
@@ -134,38 +148,34 @@
         <span class="ck"><span class="box"></span> 商品ID</span>
         <span class="ck"><span class="box"></span> 标签/优惠</span>
       </div>
-      <div style="display:flex; gap:10px; margin-top:8px">
-        <span class="btn btn-blue" style="flex:1; text-align:left">🖼️ 导出嵌入<br><span style="font-weight:400;font-size:11px;opacity:.9">Excel 365 / 新版 WPS<br>真·嵌单元格</span></span>
-        <span class="btn btn-green" style="flex:1; text-align:left">📦 导出浮动<br><span style="font-weight:400;font-size:11px;opacity:.9">所有软件都能显示<br>发给别人用这个</span></span>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <span class="btn" style="flex:1;text-align:left;background:#1a73e8;color:#fff">🖼️ 导出嵌入<br><span style="font-weight:400;font-size:11px;opacity:.9">Excel 365 / 新版 WPS<br>真·嵌单元格</span></span>
+        <span class="btn" style="flex:1;text-align:left;background:#34a853;color:#fff">📦 导出浮动<br><span style="font-weight:400;font-size:11px;opacity:.9">所有软件都能显示<br>发给别人用这个</span></span>
       </div>
     </div>
-  </div></div>
+  </div>
 
-  <div class="step"><div class="body">
-    <h3><span class="stepnum">4</span>下载并打开 .xlsx</h3>
-    <p>选完自动下载 <span class="kbd">淘宝购物车导出-taobao-时间-嵌入/浮动.xlsx</span>，用 Excel 或 WPS 打开：</p>
+  <div class="step"><h3><span class="stepnum">4</span>下载并打开 .xlsx</h3>
+    <p>自动下载 <span class="kbd">淘宝购物车导出-taobao-时间-嵌入/浮动.xlsx</span>，用 Excel 或 WPS 打开：</p>
     <table class="mocktbl">
       <tr><th>名称</th><th>规格</th><th>链接</th><th>数量</th><th>紧急程度</th><th>图片</th><th>优惠前</th><th>优惠后</th></tr>
       <tr><td>回天9133 AB胶</td><td>颜色分类：胶枪</td><td>item.taobao…</td><td>1</td><td>普通</td><td class="imgcell"><span class="pic">图</span></td><td>￥12.5</td><td>￥10</td></tr>
       <tr><td>不锈钢螺丝</td><td>M4</td><td>item.taobao…</td><td>2</td><td>普通</td><td class="imgcell"><span class="pic">图</span></td><td>￥9.8</td><td>￥8.61</td></tr>
     </table>
-  </div></div>
+  </div>
 
   <!-- ============ 说明 ============ -->
   <h2>三、两种图片模式 & 价格列</h2>
-  <div class="note"><b>🖼️ 导出嵌入：</b>图片<b>真·嵌在单元格里</b>。Excel 365 / 新版 WPS 显示为内嵌图；旧版 WPS / 旧版 Excel 显示 <span class="kbd">#VALUE!</span>。适合自己用。</div>
-  <div class="note"><b>📦 导出浮动：</b>图浮在单元格上方，<b>所有 WPS / 所有 Excel / 所有电脑</b>都能显示。发给别人用这个。</div>
-  <div class="note"><b>💰 价格列：</b>「优惠前价格」= 现价；「优惠后价格」= 平台加补后的<b>实付价</b>。可在弹窗勾选是否追加，选择会记住。</div>
+  <div class="note"><b>🖼️ 导出嵌入：</b>图片真·嵌单元格。Excel 365 / 新版 WPS 显示内嵌图；旧版 WPS / Excel 显示 <span class="kbd">#VALUE!</span>。适合自己用。</div>
+  <div class="note"><b>📦 导出浮动：</b>图浮在单元格上方，所有 WPS / 所有 Excel / 所有电脑都显示。发别人用这个。</div>
+  <div class="note"><b>💰 价格列：</b>「优惠前价格」= 现价；「优惠后价格」= 平台加补后实付价。勾选追加，选择会记住。</div>
 
   <h2>四、常见问题</h2>
-  <p><b>Q：点导出没反应？</b><br>A：滚动一下购物车页、等 2-3 秒再点；确认装的是 v1.0.6。</p>
-  <p><b>Q：图片列空白或 #VALUE!？</b><br>A：用了「嵌入」但软件不支持。重新导出选「📦 导出浮动」。</p>
-  <p><b>Q：导出了全部不是勾选的？</b><br>A：先在购物车里勾选商品（复选框✔），再点导出。</p>
+  <p><b>Q：点导出没反应？</b><br>A：滚动购物车页、等 2-3 秒再点；确认装的是 v1.0.6。</p>
+  <p><b>Q：图片列空白或 #VALUE!？</b><br>A：用了「嵌入」但软件不支持。重新选「📦 导出浮动」。</p>
+  <p><b>Q：导出了全部？</b><br>A：先勾选商品再点导出——只导勾选的。</p>
 
-  <div class="footer">
-    作者：FengMingyang　·　v1.0.6<br>
-    本扩展为个人独立开发，非淘宝/阿里巴巴官方出品，与其无任何隶属或合作关系。数据全部本地处理，不上传。
-  </div>
+  <div class="footer">作者：FengMingyang　·　v1.0.6<br>本扩展为个人独立开发，非淘宝/阿里巴巴官方出品，无任何隶属或合作关系。数据全部本地处理，不上传。</div>
 </div>
 </body>
 </html>
