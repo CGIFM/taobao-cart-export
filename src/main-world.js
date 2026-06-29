@@ -207,8 +207,8 @@
     return false;
   }
 
-  // 沿 Fiber 往上找店铺名（订单页的店铺名在父级组件）
-  function findShopName(el) {
+  // 找店铺名：Fiber + DOM 多策略
+  function findShopName(el, itemTitle) {
     // 策略1: Fiber 父级
     var fk = fiberKey(el);
     if (fk) {
@@ -221,39 +221,28 @@
             var v = mp[SHOP_KEYS[i]];
             if (typeof v === 'string' && v.length > 0 && v.length < 100) return v;
           }
-          try {
-            for (var k of Object.keys(mp)) {
-              var sv = mp[k];
-              if (sv && typeof sv === 'object' && !Array.isArray(sv)) {
-                for (var j = 0; j < SHOP_KEYS.length; j++) {
-                  var v2 = sv[SHOP_KEYS[j]];
-                  if (typeof v2 === 'string' && v2.length > 0 && v2.length < 100) return v2;
-                }
-              }
-            }
-          } catch (e) {}
         }
-        fiber = fiber.return;
-        depth++;
+        fiber = fiber.return; depth++;
       }
     }
-    // 策略2: DOM 向上找订单容器，在其中找店铺链接/文字
+    // 策略2: DOM 核弹法——从商品行往上 8 层拿到订单容器，取容器内文字，去掉商品标题和已知 UI 文字，第一个短文本就是店铺名
     var container = el;
-    for (var lv = 0; lv < 15; lv++) {
-      if (!container) break;
-      // 找店铺链接
-      var links = container.querySelectorAll('a[href*="shop"], a[href*="store"], a[href*="sc.taobao"], a[href*="tmall.com"], a[href*="wangwang"]');
-      for (var li = 0; li < links.length; li++) {
-        var txt = links[li].textContent.trim();
-        if (txt && txt.length >= 2 && txt.length < 50 && !/^(进店|联系|客服|收藏|http|https)/.test(txt)) return txt;
-      }
-      // 找 class 含 shop/seller/store 的元素
-      var els = container.querySelectorAll('[class*="shop" i], [class*="seller" i], [class*="store" i]');
-      for (var ei = 0; ei < els.length; ei++) {
-        var t = els[ei].textContent.trim();
-        if (t && t.length >= 2 && t.length < 50) return t;
-      }
+    for (var lv = 0; lv < 8; lv++) {
+      if (!container || container.tagName === 'BODY') break;
       container = container.parentElement;
+    }
+    if (container && container !== el) {
+      var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+      var UI_WORDS = /^(进店|联系|客服|收藏|删除|分享|评价|追加|http|查看|更多|展开|收起|旺旺|交易|待发|待收|已发|已收|退款|退货|投诉|举报|订单|详情|提醒|确定|取消|批量|共计|实付|运费|优惠|满|件|个|元|￥|¥|\d|\s|\.|-|selected|勾选|全选|导出|普通|加急|颜色|分类|尺码|规格|数量|图片|链接|名称|紧急|程度)/;
+      var node;
+      while (node = walker.nextNode()) {
+        var t = node.textContent.trim();
+        if (t.length >= 2 && t.length <= 30 && t !== itemTitle && !UI_WORDS.test(t) && !/^[\d\s￥¥.,元]+$/.test(t)) {
+          // 进一步排除：不是标题的一部分、不是价格
+          if (itemTitle && itemTitle.indexOf(t) >= 0) continue;
+          return t;
+        }
+      }
     }
     return '';
   }
@@ -279,7 +268,7 @@
       norm._selected = readSelected(rowEl, found);
       // 订单页：商品本身没店铺名，从父级 Fiber 找
       if (!norm.shop && rowEl) {
-        var shop = findShopName(rowEl);
+        var shop = findShopName(rowEl, norm.title);
         if (shop) norm.shop = shop;
       }
       items.push(norm);
