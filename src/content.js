@@ -94,10 +94,11 @@
       // 更新进度
       panel.update('正在采集第 ' + p + ' 页…（已采集 ' + allItems.length + ' 件）');
 
-      // 等 fiberItems 更新（最多 5 秒）
-      var prevCount = fiberItems.length;
+      // 等 fiberItems 有数据（最多 6 秒）
       var waited = 0;
-      while (fiberItems.length === 0 && waited < 5000) { await sleep(300); waited += 300; }
+      while (fiberItems.length === 0 && waited < 6000) { await sleep(300); waited += 300; }
+      // 再等 1 秒让扫描稳定
+      await sleep(1000);
 
       // 收集当前页的商品
       var pageItems = gatherItems();
@@ -105,17 +106,20 @@
         var it = pageItems[i];
         if (!seen.has(it._raw_id)) { seen.add(it._raw_id); allItems.push(it); }
       }
+      panel.update('第 ' + p + ' 页采集 ' + pageItems.length + ' 件（累计 ' + allItems.length + ' 件）');
 
       // 翻到下一页
       if (p < endPage) {
         var nextPage = p + 1;
         var clicked = clickNextPage();
-        if (!clicked) { panel.update('第 ' + p + ' 页采集完，未找到下一页按钮，停止。'); break; }
+        if (!clicked) { panel.update('未找到下一页按钮，停止。'); break; }
         panel.update('翻到第 ' + nextPage + ' 页…');
         var ok = await waitForPageChange(nextPage, 8000);
         if (!ok) { panel.update('翻页超时，已采集到第 ' + p + ' 页。'); break; }
-        // 清空 fiberItems 让下一页重新扫描
+        // 不清空 fiberItems！发 rescan 指令让 main-world 重新扫描新页面
         fiberItems = [];
+        window.postMessage({ tag: TAG, kind: 'rescan' }, '*');
+        await sleep(500); // 等 main-world 处理 rescan
       }
     }
 

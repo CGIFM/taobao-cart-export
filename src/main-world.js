@@ -293,6 +293,15 @@
   }
 
   let lastSig = '', diagLogged = false, diagPayload = null;
+
+  // 接收 content 发来的强制重扫指令（翻页后触发）
+  window.addEventListener('message', function (e) {
+    if (e.data && e.data.tag === TAG && e.data.kind === 'rescan') {
+      lastSig = ''; // 清缓存，强制下次 scanAndRelay 重新扫描并发送
+      setTimeout(scanAndRelay, 100);
+    }
+  });
+
   function scanAndRelay() {
     let items;
     try { items = scanCartItems(); } catch (e) { return; }
